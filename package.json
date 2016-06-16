@@ -1,0 +1,26 @@
+{
+  "name": "vdom-experiment",
+  "version": "0.1.0",
+  "description": "vdom experiment",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack",
+    "watch": "webpack --watch"
+  },
+  "keywords": [
+    "vdom",
+    "experiment"
+  ],
+  "author": "Yuri Egorov <ysegorov@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "flyd": "^0.2.2",
+    "ramda": "^0.21.0",
+    "snabbdom": "^0.5.0"
+  },
+  "devDependencies": {
+    "jshint": "^2.9.2",
+    "jshint-loader": "^0.8.3",
+    "webpack": "^1.13.1"
+  }
+}
