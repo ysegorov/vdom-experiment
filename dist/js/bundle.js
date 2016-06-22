@@ -1,7 +1,7 @@
 /*!
  * vdom-experiment
  * Yuri Egorov <ysegorov@gmail.com>
- * 0.1.0:1466056275484
+ * 0.1.0:1466581870437
  */
 /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
@@ -45,30 +45,7 @@
 /******/ 	return __webpack_require__(0);
 /******/ })
 /************************************************************************/
-/******/ ((function(modules) {
-	// Check all modules for deduplicated modules
-	for(var i in modules) {
-		if(Object.prototype.hasOwnProperty.call(modules, i)) {
-			switch(typeof modules[i]) {
-			case "function": break;
-			case "object":
-				// Module can be created from a template
-				modules[i] = (function(_m) {
-					var args = _m.slice(1), fn = modules[_m[0]];
-					return function (a,b,c) {
-						fn.apply(this, [a,b,c].concat(args));
-					};
-				}(modules[i]));
-				break;
-			default:
-				// Module is a copy of another module
-				modules[i] = modules[modules[i]];
-				break;
-			}
-		}
-	}
-	return modules;
-}([
+/******/ ([
 /* 0 */
 /***/ function(module, exports, __webpack_require__) {
 
@@ -76,8 +53,8 @@
 	'use strict';
 	
 	var app = __webpack_require__(1),
-	    doc = __webpack_require__(55),
-	    win= __webpack_require__(54);
+	    doc = __webpack_require__(56),
+	    win= __webpack_require__(55);
 	
 	
 	function run(evt) {
@@ -104,13 +81,14 @@
 	        __webpack_require__(7),
 	        __webpack_require__(8),
 	        __webpack_require__(9),
-	        __webpack_require__(68)
+	        __webpack_require__(10)
 	    ]),
-	    _ = __webpack_require__(10),
-	    Type = __webpack_require__(52),
-	    globalEvents = __webpack_require__(53),
-	    flyd = __webpack_require__(56),
-	    Component = __webpack_require__(63);
+	    cuid = __webpack_require__(95),
+	    _ = __webpack_require__(11),
+	    Type = __webpack_require__(53),
+	    globalEvents = __webpack_require__(54),
+	    stream = __webpack_require__(57),
+	    Component = __webpack_require__(58);
 	
 	
 	// action
@@ -139,20 +117,30 @@
 	    Pause: function pause(evt, model) {
 	        return _.assoc('_paused', true, model);
 	    },
-	    Play: function play(evt, model) { return _.assoc('_paused', false, model); },
-	    Resize: function resize(evt, model) {console.log('resize', evt); return model; },
-	    VisibilityChange: function visibility(evt, model) {console.log('visibility', evt); return model; },
+	    Play: function play(evt, model) {
+	        return _.assoc('_paused', false, model);
+	    },
+	    Resize: function resize(evt, model) {
+	        console.log('resize', evt);
+	        return model;
+	    },
+	    VisibilityChange: function visibility(evt, model) {
+	        // console.log('visibility', evt);
+	        return model;
+	    },
 	    Start: function start(model) { return model; }
 	});
 	
 	// model
 	
 	function init() {
-	    var b = [], cnt = 200, i;
+	    var b = [], cnt = 150, i;
 	    for (i=0; i<cnt; i+=1) {
 	        b.push(Component.init(i+2));
 	    }
 	    return {
+	        cuid: cuid(),
+	        _paused: false,
 	        component: Component.init(1),
 	        blocks: b
 	    };
@@ -163,20 +151,33 @@
 	
 	
 	var view = _.curryN(2, function (action, model) {
-	    var frwd = flyd.stream();
+	    function blur(evt) {
+	        evt.target.blur();
+	    }
 	    var children = [
-	        h('button', {on: {click: _.compose(action, Msg.Add(model.blocks.length + 1))}}, '+'),
-	        h('button', {on: {click: _.compose(action, Msg.Clear)}}, '-'),
-	        h('button', {on: {click: _.compose(action, model._paused ? Msg.Play : Msg.Pause)}}, model._paused ? 'play' : 'pause'),
+	        h('button', {
+	            on: {
+	                click: _.compose(action, Msg.Add(model.blocks.length + 1), _.tap(blur))
+	            }
+	        }, '+'),
+	        h('button', {
+	            on: {
+	                click: _.compose(action, Msg.Clear, _.tap(blur))
+	            }
+	        }, '-'),
+	        h('button', {
+	            on: {
+	                click: _.compose(action, model._paused ? Msg.Play : Msg.Pause, _.tap(blur))
+	            }
+	        }, model._paused ? 'play' : 'pause'),
 	        h('hr'),
-	        Component.view(_.compose(frwd, Msg.Component), model.component)
+	        Component.view(_.compose(action, Msg.Component), model.component)
 	    ];
-	    flyd.map(action, frwd);
 	
 	    model.blocks.forEach(function (block, idx) {
-	        children.push(Component.view(_.compose(frwd, Msg.Block(idx)), block));
+	        children.push(Component.view(_.compose(action, Msg.Block(idx)), block));
 	    });
-	    return h('div', {}, children);
+	    return h('div', {key: model.cuid}, children);
 	});
 	
 	
@@ -184,21 +185,21 @@
 	
 	function app(elm) {
 	
-	    var action = flyd.stream();
-	    var model = flyd.scan(_.flip(Msg.update), init(), action);
+	    var action = stream();
+	    var model = action.scan(_.flip(Msg.update), init());
 	    // model.map(function (v) { console.log(v); });
 	
-	    var vnode = flyd.map(view(action), model);
-	    flyd.scan(patch, elm, vnode);
+	    var vnode = model.map(view(action));
+	    vnode.scan(patch, elm);
 	
 	    action(Msg.Start());
 	
 	    var tickAction = _.compose(action, Msg.Tick);
 	
-	    // TODO: pause/stop
-	    //
+	
 	    console.time('timer');
-	    var cnt = 0;
+	    var timeout = 10;
+	    var cnt = 0, limit = 70, interval;
 	
 	    function runner() {
 	        cnt += 1;
@@ -206,14 +207,19 @@
 	            //clearInterval(interval);
 	            console.timeEnd('timer');
 	            console.time('timer');
+	            limit -= 1;
 	            //return;
+	        }
+	        if (limit === 0) {
+	            clearInterval(interval);
+	            return ;
 	        }
 	        tickAction();
 	    }
 	
-	    var interval = setInterval(runner, 10);
+	    interval = setInterval(runner, timeout);
 	
-	    flyd.map(function (m) {
+	    model.map(function (m) {
 	        if (m._paused) {
 	            if (interval) {
 	                clearInterval(interval);
@@ -221,10 +227,10 @@
 	            }
 	        } else {
 	            if (interval === null) {
-	                interval = setInterval(runner, 10);
+	                interval = setInterval(runner, timeout);
 	            }
 	        }
-	    }, model);
+	    });
 	
 	    globalEvents({resize: _.compose(action, Msg.Resize)},
 	                 {visibilitychange: _.compose(action, Msg.VisibilityChange)});
@@ -739,22 +745,86 @@
 /* 10 */
 /***/ function(module, exports, __webpack_require__) {
 
+	var is = __webpack_require__(4);
+	
+	function arrInvoker(arr) {
+	  return function() {
+	    if (!arr.length) return;
+	    // Special case when length is two, for performance
+	    arr.length === 2 ? arr[0](arr[1]) : arr[0].apply(undefined, arr.slice(1));
+	  };
+	}
+	
+	function fnInvoker(o) {
+	  return function(ev) { 
+	    if (o.fn === null) return;
+	    o.fn(ev); 
+	  };
+	}
+	
+	function updateEventListeners(oldVnode, vnode) {
+	  var name, cur, old, elm = vnode.elm,
+	      oldOn = oldVnode.data.on || {}, on = vnode.data.on;
+	  if (!on) return;
+	  for (name in on) {
+	    cur = on[name];
+	    old = oldOn[name];
+	    if (old === undefined) {
+	      if (is.array(cur)) {
+	        elm.addEventListener(name, arrInvoker(cur));
+	      } else {
+	        cur = {fn: cur};
+	        on[name] = cur;
+	        elm.addEventListener(name, fnInvoker(cur));
+	      }
+	    } else if (is.array(old)) {
+	      // Deliberately modify old array since it's captured in closure created with `arrInvoker`
+	      old.length = cur.length;
+	      for (var i = 0; i < old.length; ++i) old[i] = cur[i];
+	      on[name]  = old;
+	    } else {
+	      old.fn = cur;
+	      on[name] = old;
+	    }
+	  }
+	  if (oldOn) {
+	    for (name in oldOn) {
+	      if (on[name] === undefined) {
+	        var old = oldOn[name];
+	        if (is.array(old)) {
+	          old.length = 0;
+	        }
+	        else {
+	          old.fn = null;
+	        }
+	      }
+	    }
+	  }
+	}
+	
+	module.exports = {create: updateEventListeners, update: updateEventListeners};
+
+
+/***/ },
+/* 11 */
+/***/ function(module, exports, __webpack_require__) {
+
 	
 	'use strict';
 	
-	var adjust = __webpack_require__(11),
-	    append = __webpack_require__(17),
-	    assoc = __webpack_require__(18),
-	    compose = __webpack_require__(19),
-	    curry = __webpack_require__(35),
-	    curryN = __webpack_require__(36),
-	    evolve = __webpack_require__(38),
-	    flip = __webpack_require__(39),
-	    is = __webpack_require__(40),
-	    keys = __webpack_require__(41),
-	    map = __webpack_require__(44),
-	    prop = __webpack_require__(50),
-	    tap = __webpack_require__(51);
+	var adjust = __webpack_require__(12),
+	    append = __webpack_require__(18),
+	    assoc = __webpack_require__(19),
+	    compose = __webpack_require__(20),
+	    curry = __webpack_require__(36),
+	    curryN = __webpack_require__(37),
+	    evolve = __webpack_require__(39),
+	    flip = __webpack_require__(40),
+	    is = __webpack_require__(41),
+	    keys = __webpack_require__(42),
+	    map = __webpack_require__(45),
+	    prop = __webpack_require__(51),
+	    tap = __webpack_require__(52);
 	
 	
 	function isDefined(smth) {
@@ -783,11 +853,11 @@
 
 
 /***/ },
-/* 11 */
+/* 12 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _concat = __webpack_require__(12);
-	var _curry3 = __webpack_require__(13);
+	var _concat = __webpack_require__(13);
+	var _curry3 = __webpack_require__(14);
 	
 	
 	/**
@@ -826,7 +896,7 @@
 
 
 /***/ },
-/* 12 */
+/* 13 */
 /***/ function(module, exports) {
 
 	/**
@@ -863,12 +933,12 @@
 
 
 /***/ },
-/* 13 */
+/* 14 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _curry1 = __webpack_require__(14);
-	var _curry2 = __webpack_require__(16);
-	var _isPlaceholder = __webpack_require__(15);
+	var _curry1 = __webpack_require__(15);
+	var _curry2 = __webpack_require__(17);
+	var _isPlaceholder = __webpack_require__(16);
 	
 	
 	/**
@@ -907,9 +977,33 @@
 
 
 /***/ },
-/* 14 */
-[64, 15],
 /* 15 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var _isPlaceholder = __webpack_require__(16);
+	
+	
+	/**
+	 * Optimized internal one-arity curry function.
+	 *
+	 * @private
+	 * @category Function
+	 * @param {Function} fn The function to curry.
+	 * @return {Function} The curried function.
+	 */
+	module.exports = function _curry1(fn) {
+	  return function f1(a) {
+	    if (arguments.length === 0 || _isPlaceholder(a)) {
+	      return f1;
+	    } else {
+	      return fn.apply(this, arguments);
+	    }
+	  };
+	};
+
+
+/***/ },
+/* 16 */
 /***/ function(module, exports) {
 
 	module.exports = function _isPlaceholder(a) {
@@ -920,13 +1014,45 @@
 
 
 /***/ },
-/* 16 */
-[65, 14, 15],
 /* 17 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _concat = __webpack_require__(12);
-	var _curry2 = __webpack_require__(16);
+	var _curry1 = __webpack_require__(15);
+	var _isPlaceholder = __webpack_require__(16);
+	
+	
+	/**
+	 * Optimized internal two-arity curry function.
+	 *
+	 * @private
+	 * @category Function
+	 * @param {Function} fn The function to curry.
+	 * @return {Function} The curried function.
+	 */
+	module.exports = function _curry2(fn) {
+	  return function f2(a, b) {
+	    switch (arguments.length) {
+	      case 0:
+	        return f2;
+	      case 1:
+	        return _isPlaceholder(a) ? f2
+	             : _curry1(function(_b) { return fn(a, _b); });
+	      default:
+	        return _isPlaceholder(a) && _isPlaceholder(b) ? f2
+	             : _isPlaceholder(a) ? _curry1(function(_a) { return fn(_a, b); })
+	             : _isPlaceholder(b) ? _curry1(function(_b) { return fn(a, _b); })
+	             : fn(a, b);
+	    }
+	  };
+	};
+
+
+/***/ },
+/* 18 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var _concat = __webpack_require__(13);
+	var _curry2 = __webpack_require__(17);
 	
 	
 	/**
@@ -955,10 +1081,10 @@
 
 
 /***/ },
-/* 18 */
+/* 19 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _curry3 = __webpack_require__(13);
+	var _curry3 = __webpack_require__(14);
 	
 	
 	/**
@@ -992,11 +1118,11 @@
 
 
 /***/ },
-/* 19 */
+/* 20 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var pipe = __webpack_require__(20);
-	var reverse = __webpack_require__(33);
+	var pipe = __webpack_require__(21);
+	var reverse = __webpack_require__(34);
 	
 	
 	/**
@@ -1028,13 +1154,13 @@
 
 
 /***/ },
-/* 20 */
+/* 21 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _arity = __webpack_require__(21);
-	var _pipe = __webpack_require__(22);
-	var reduce = __webpack_require__(23);
-	var tail = __webpack_require__(29);
+	var _arity = __webpack_require__(22);
+	var _pipe = __webpack_require__(23);
+	var reduce = __webpack_require__(24);
+	var tail = __webpack_require__(30);
 	
 	
 	/**
@@ -1069,7 +1195,7 @@
 
 
 /***/ },
-/* 21 */
+/* 22 */
 /***/ function(module, exports) {
 
 	module.exports = function _arity(n, fn) {
@@ -1092,7 +1218,7 @@
 
 
 /***/ },
-/* 22 */
+/* 23 */
 /***/ function(module, exports) {
 
 	module.exports = function _pipe(f, g) {
@@ -1103,11 +1229,11 @@
 
 
 /***/ },
-/* 23 */
+/* 24 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _curry3 = __webpack_require__(13);
-	var _reduce = __webpack_require__(24);
+	var _curry3 = __webpack_require__(14);
+	var _reduce = __webpack_require__(25);
 	
 	
 	/**
@@ -1147,12 +1273,12 @@
 
 
 /***/ },
-/* 24 */
+/* 25 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _xwrap = __webpack_require__(25);
-	var bind = __webpack_require__(26);
-	var isArrayLike = __webpack_require__(27);
+	var _xwrap = __webpack_require__(26);
+	var bind = __webpack_require__(27);
+	var isArrayLike = __webpack_require__(28);
 	
 	
 	module.exports = (function() {
@@ -1210,7 +1336,7 @@
 
 
 /***/ },
-/* 25 */
+/* 26 */
 /***/ function(module, exports) {
 
 	module.exports = (function() {
@@ -1230,11 +1356,11 @@
 
 
 /***/ },
-/* 26 */
+/* 27 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _arity = __webpack_require__(21);
-	var _curry2 = __webpack_require__(16);
+	var _arity = __webpack_require__(22);
+	var _curry2 = __webpack_require__(17);
 	
 	
 	/**
@@ -1261,11 +1387,11 @@
 
 
 /***/ },
-/* 27 */
+/* 28 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _curry1 = __webpack_require__(14);
-	var _isArray = __webpack_require__(28);
+	var _curry1 = __webpack_require__(15);
+	var _isArray = __webpack_require__(29);
 	
 	
 	/**
@@ -1302,7 +1428,7 @@
 
 
 /***/ },
-/* 28 */
+/* 29 */
 /***/ function(module, exports) {
 
 	/**
@@ -1325,11 +1451,11 @@
 
 
 /***/ },
-/* 29 */
+/* 30 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _checkForMethod = __webpack_require__(30);
-	var slice = __webpack_require__(32);
+	var _checkForMethod = __webpack_require__(31);
+	var slice = __webpack_require__(33);
 	
 	
 	/**
@@ -1363,11 +1489,11 @@
 
 
 /***/ },
-/* 30 */
+/* 31 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _isArray = __webpack_require__(28);
-	var _slice = __webpack_require__(31);
+	var _isArray = __webpack_require__(29);
+	var _slice = __webpack_require__(32);
 	
 	
 	/**
@@ -1395,7 +1521,7 @@
 
 
 /***/ },
-/* 31 */
+/* 32 */
 /***/ function(module, exports) {
 
 	/**
@@ -1433,11 +1559,11 @@
 
 
 /***/ },
-/* 32 */
+/* 33 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _checkForMethod = __webpack_require__(30);
-	var _curry3 = __webpack_require__(13);
+	var _checkForMethod = __webpack_require__(31);
+	var _curry3 = __webpack_require__(14);
 	
 	
 	/**
@@ -1470,12 +1596,12 @@
 
 
 /***/ },
-/* 33 */
+/* 34 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _curry1 = __webpack_require__(14);
-	var _isString = __webpack_require__(34);
-	var _slice = __webpack_require__(31);
+	var _curry1 = __webpack_require__(15);
+	var _isString = __webpack_require__(35);
+	var _slice = __webpack_require__(32);
 	
 	
 	/**
@@ -1509,7 +1635,7 @@
 
 
 /***/ },
-/* 34 */
+/* 35 */
 /***/ function(module, exports) {
 
 	module.exports = function _isString(x) {
@@ -1518,11 +1644,11 @@
 
 
 /***/ },
-/* 35 */
+/* 36 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _curry1 = __webpack_require__(14);
-	var curryN = __webpack_require__(36);
+	var _curry1 = __webpack_require__(15);
+	var curryN = __webpack_require__(37);
 	
 	
 	/**
@@ -1572,14 +1698,116 @@
 
 
 /***/ },
-/* 36 */
-[66, 21, 14, 16, 37],
 /* 37 */
-[67, 21, 15],
+/***/ function(module, exports, __webpack_require__) {
+
+	var _arity = __webpack_require__(22);
+	var _curry1 = __webpack_require__(15);
+	var _curry2 = __webpack_require__(17);
+	var _curryN = __webpack_require__(38);
+	
+	
+	/**
+	 * Returns a curried equivalent of the provided function, with the specified
+	 * arity. The curried function has two unusual capabilities. First, its
+	 * arguments needn't be provided one at a time. If `g` is `R.curryN(3, f)`, the
+	 * following are equivalent:
+	 *
+	 *   - `g(1)(2)(3)`
+	 *   - `g(1)(2, 3)`
+	 *   - `g(1, 2)(3)`
+	 *   - `g(1, 2, 3)`
+	 *
+	 * Secondly, the special placeholder value `R.__` may be used to specify
+	 * "gaps", allowing partial application of any combination of arguments,
+	 * regardless of their positions. If `g` is as above and `_` is `R.__`, the
+	 * following are equivalent:
+	 *
+	 *   - `g(1, 2, 3)`
+	 *   - `g(_, 2, 3)(1)`
+	 *   - `g(_, _, 3)(1)(2)`
+	 *   - `g(_, _, 3)(1, 2)`
+	 *   - `g(_, 2)(1)(3)`
+	 *   - `g(_, 2)(1, 3)`
+	 *   - `g(_, 2)(_, 3)(1)`
+	 *
+	 * @func
+	 * @memberOf R
+	 * @since v0.5.0
+	 * @category Function
+	 * @sig Number -> (* -> a) -> (* -> a)
+	 * @param {Number} length The arity for the returned function.
+	 * @param {Function} fn The function to curry.
+	 * @return {Function} A new, curried function.
+	 * @see R.curry
+	 * @example
+	 *
+	 *      var sumArgs = (...args) => R.sum(args);
+	 *
+	 *      var curriedAddFourNumbers = R.curryN(4, sumArgs);
+	 *      var f = curriedAddFourNumbers(1, 2);
+	 *      var g = f(3);
+	 *      g(4); //=> 10
+	 */
+	module.exports = _curry2(function curryN(length, fn) {
+	  if (length === 1) {
+	    return _curry1(fn);
+	  }
+	  return _arity(length, _curryN(length, [], fn));
+	});
+
+
+/***/ },
 /* 38 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _curry2 = __webpack_require__(16);
+	var _arity = __webpack_require__(22);
+	var _isPlaceholder = __webpack_require__(16);
+	
+	
+	/**
+	 * Internal curryN function.
+	 *
+	 * @private
+	 * @category Function
+	 * @param {Number} length The arity of the curried function.
+	 * @param {Array} received An array of arguments received thus far.
+	 * @param {Function} fn The function to curry.
+	 * @return {Function} The curried function.
+	 */
+	module.exports = function _curryN(length, received, fn) {
+	  return function() {
+	    var combined = [];
+	    var argsIdx = 0;
+	    var left = length;
+	    var combinedIdx = 0;
+	    while (combinedIdx < received.length || argsIdx < arguments.length) {
+	      var result;
+	      if (combinedIdx < received.length &&
+	          (!_isPlaceholder(received[combinedIdx]) ||
+	           argsIdx >= arguments.length)) {
+	        result = received[combinedIdx];
+	      } else {
+	        result = arguments[argsIdx];
+	        argsIdx += 1;
+	      }
+	      combined[combinedIdx] = result;
+	      if (!_isPlaceholder(result)) {
+	        left -= 1;
+	      }
+	      combinedIdx += 1;
+	    }
+	    return left <= 0 ? fn.apply(this, combined)
+	                     : _arity(left, _curryN(length, combined, fn));
+	  };
+	};
+
+
+/***/ },
+/* 39 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var _curry2 = __webpack_require__(17);
 	
 	
 	/**
@@ -1624,12 +1852,12 @@
 
 
 /***/ },
-/* 39 */
+/* 40 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _curry1 = __webpack_require__(14);
-	var _slice = __webpack_require__(31);
-	var curry = __webpack_require__(35);
+	var _curry1 = __webpack_require__(15);
+	var _slice = __webpack_require__(32);
+	var curry = __webpack_require__(36);
 	
 	
 	/**
@@ -1662,10 +1890,10 @@
 
 
 /***/ },
-/* 40 */
+/* 41 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _curry2 = __webpack_require__(16);
+	var _curry2 = __webpack_require__(17);
 	
 	
 	/**
@@ -1697,12 +1925,12 @@
 
 
 /***/ },
-/* 41 */
+/* 42 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _curry1 = __webpack_require__(14);
-	var _has = __webpack_require__(42);
-	var _isArguments = __webpack_require__(43);
+	var _curry1 = __webpack_require__(15);
+	var _has = __webpack_require__(43);
+	var _isArguments = __webpack_require__(44);
 	
 	
 	/**
@@ -1776,7 +2004,7 @@
 
 
 /***/ },
-/* 42 */
+/* 43 */
 /***/ function(module, exports) {
 
 	module.exports = function _has(prop, obj) {
@@ -1785,10 +2013,10 @@
 
 
 /***/ },
-/* 43 */
+/* 44 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _has = __webpack_require__(42);
+	var _has = __webpack_require__(43);
 	
 	
 	module.exports = (function() {
@@ -1800,16 +2028,16 @@
 
 
 /***/ },
-/* 44 */
+/* 45 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _curry2 = __webpack_require__(16);
-	var _dispatchable = __webpack_require__(45);
-	var _map = __webpack_require__(47);
-	var _reduce = __webpack_require__(24);
-	var _xmap = __webpack_require__(48);
-	var curryN = __webpack_require__(36);
-	var keys = __webpack_require__(41);
+	var _curry2 = __webpack_require__(17);
+	var _dispatchable = __webpack_require__(46);
+	var _map = __webpack_require__(48);
+	var _reduce = __webpack_require__(25);
+	var _xmap = __webpack_require__(49);
+	var curryN = __webpack_require__(37);
+	var keys = __webpack_require__(42);
 	
 	
 	/**
@@ -1862,12 +2090,12 @@
 
 
 /***/ },
-/* 45 */
+/* 46 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _isArray = __webpack_require__(28);
-	var _isTransformer = __webpack_require__(46);
-	var _slice = __webpack_require__(31);
+	var _isArray = __webpack_require__(29);
+	var _isTransformer = __webpack_require__(47);
+	var _slice = __webpack_require__(32);
 	
 	
 	/**
@@ -1907,7 +2135,7 @@
 
 
 /***/ },
-/* 46 */
+/* 47 */
 /***/ function(module, exports) {
 
 	module.exports = function _isTransformer(obj) {
@@ -1916,7 +2144,7 @@
 
 
 /***/ },
-/* 47 */
+/* 48 */
 /***/ function(module, exports) {
 
 	module.exports = function _map(fn, functor) {
@@ -1932,11 +2160,11 @@
 
 
 /***/ },
-/* 48 */
+/* 49 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _curry2 = __webpack_require__(16);
-	var _xfBase = __webpack_require__(49);
+	var _curry2 = __webpack_require__(17);
+	var _xfBase = __webpack_require__(50);
 	
 	
 	module.exports = (function() {
@@ -1955,7 +2183,7 @@
 
 
 /***/ },
-/* 49 */
+/* 50 */
 /***/ function(module, exports) {
 
 	module.exports = {
@@ -1969,10 +2197,10 @@
 
 
 /***/ },
-/* 50 */
+/* 51 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _curry2 = __webpack_require__(16);
+	var _curry2 = __webpack_require__(17);
 	
 	
 	/**
@@ -1996,10 +2224,10 @@
 
 
 /***/ },
-/* 51 */
+/* 52 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _curry2 = __webpack_require__(16);
+	var _curry2 = __webpack_require__(17);
 	
 	
 	/**
@@ -2026,13 +2254,13 @@
 
 
 /***/ },
-/* 52 */
+/* 53 */
 /***/ function(module, exports, __webpack_require__) {
 
 	
 	'use strict';
 	
-	var _ = __webpack_require__(10);
+	var _ = __webpack_require__(11);
 	
 	
 	function Type(spec) {
@@ -2072,15 +2300,15 @@
 
 
 /***/ },
-/* 53 */
+/* 54 */
 /***/ function(module, exports, __webpack_require__) {
 
 	
 	'use strict';
 	
-	var win = __webpack_require__(54),
-	    doc = __webpack_require__(55),
-	    _ = __webpack_require__(10);
+	var win = __webpack_require__(55),
+	    doc = __webpack_require__(56),
+	    _ = __webpack_require__(11);
 	
 	
 	module.exports = function (winEvents, docEvents) {
@@ -2101,671 +2329,82 @@
 
 
 /***/ },
-/* 54 */
+/* 55 */
 /***/ function(module, exports) {
 
 	module.exports = window;
 
 /***/ },
-/* 55 */
+/* 56 */
 /***/ function(module, exports) {
 
 	module.exports = document;
 
 /***/ },
-/* 56 */
+/* 57 */
 /***/ function(module, exports, __webpack_require__) {
 
+	
 	'use strict';
 	
-	var curryN = __webpack_require__(57);
+	var _ = __webpack_require__(11);
 	
-	// Utility
-	function isFunction(obj) {
-	  return !!(obj && obj.constructor && obj.call && obj.apply);
-	}
-	function trueFn() { return true; }
 	
-	// Globals
-	var toUpdate = [];
-	var inStream;
-	var order = [];
-	var orderNextIdx = -1;
-	var flushing = false;
+	function stream(initial) {
 	
-	/** @namespace */
-	var flyd = {}
-	
-	// /////////////////////////// API ///////////////////////////////// //
-	
-	/**
-	 * Creates a new stream
-	 *
-	 * __Signature__: `a -> Stream a`
-	 *
-	 * @name flyd.stream
-	 * @param {*} initialValue - (Optional) the initial value of the stream
-	 * @return {stream} the stream
-	 *
-	 * @example
-	 * var n = flyd.stream(1); // Stream with initial value `1`
-	 * var s = flyd.stream(); // Stream with no initial value
-	 */
-	flyd.stream = function(initialValue) {
-	  var endStream = createDependentStream([], trueFn);
-	  var s = createStream();
-	  s.end = endStream;
-	  s.fnArgs = [];
-	  endStream.listeners.push(s);
-	  if (arguments.length > 0) s(initialValue);
-	  return s;
-	}
-	
-	/**
-	 * Create a new dependent stream
-	 *
-	 * __Signature__: `(...Stream * -> Stream b -> b) -> [Stream *] -> Stream b`
-	 *
-	 * @name flyd.combine
-	 * @param {Function} fn - the function used to combine the streams
-	 * @param {Array<stream>} dependencies - the streams that this one depends on
-	 * @return {stream} the dependent stream
-	 *
-	 * @example
-	 * var n1 = flyd.stream(0);
-	 * var n2 = flyd.stream(0);
-	 * var max = flyd.combine(function(n1, n2, self, changed) {
-	 *   return n1() > n2() ? n1() : n2();
-	 * }, [n1, n2]);
-	 */
-	flyd.combine = curryN(2, combine);
-	function combine(fn, streams) {
-	  var i, s, deps, depEndStreams;
-	  var endStream = createDependentStream([], trueFn);
-	  deps = []; depEndStreams = [];
-	  for (i = 0; i < streams.length; ++i) {
-	    if (streams[i] !== undefined) {
-	      deps.push(streams[i]);
-	      if (streams[i].end !== undefined) depEndStreams.push(streams[i].end);
+	    function setValue(v, s) {
+	        s.val = v;
+	        s.listeners.forEach(function inner(fn) { fn(v); });
+	        return v;
 	    }
-	  }
-	  s = createDependentStream(deps, fn);
-	  s.depsChanged = [];
-	  s.fnArgs = s.deps.concat([s, s.depsChanged]);
-	  s.end = endStream;
-	  endStream.listeners.push(s);
-	  addListeners(depEndStreams, endStream);
-	  endStream.deps = depEndStreams;
-	  updateStream(s);
-	  return s;
-	}
-	
-	/**
-	 * Returns `true` if the supplied argument is a Flyd stream and `false` otherwise.
-	 *
-	 * __Signature__: `* -> Boolean`
-	 *
-	 * @name flyd.isStream
-	 * @param {*} value - the value to test
-	 * @return {Boolean} `true` if is a Flyd streamn, `false` otherwise
-	 *
-	 * @example
-	 * var s = flyd.stream(1);
-	 * var n = 1;
-	 * flyd.isStream(s); //=> true
-	 * flyd.isStream(n); //=> false
-	 */
-	flyd.isStream = function(stream) {
-	  return isFunction(stream) && 'hasVal' in stream;
-	}
-	
-	/**
-	 * Invokes the body (the function to calculate the value) of a dependent stream
-	 *
-	 * By default the body of a dependent stream is only called when all the streams
-	 * upon which it depends has a value. `immediate` can circumvent this behaviour.
-	 * It immediately invokes the body of a dependent stream.
-	 *
-	 * __Signature__: `Stream a -> Stream a`
-	 *
-	 * @name flyd.immediate
-	 * @param {stream} stream - the dependent stream
-	 * @return {stream} the same stream
-	 *
-	 * @example
-	 * var s = flyd.stream();
-	 * var hasItems = flyd.immediate(flyd.combine(function(s) {
-	 *   return s() !== undefined && s().length > 0;
-	 * }, [s]);
-	 * console.log(hasItems()); // logs `false`. Had `immediate` not been
-	 *                          // used `hasItems()` would've returned `undefined`
-	 * s([1]);
-	 * console.log(hasItems()); // logs `true`.
-	 * s([]);
-	 * console.log(hasItems()); // logs `false`.
-	 */
-	flyd.immediate = function(s) {
-	  if (s.depsMet === false) {
-	    s.depsMet = true;
-	    updateStream(s);
-	  }
-	  return s;
-	}
-	
-	/**
-	 * Changes which `endsStream` should trigger the ending of `s`.
-	 *
-	 * __Signature__: `Stream a -> Stream b -> Stream b`
-	 *
-	 * @name flyd.endsOn
-	 * @param {stream} endStream - the stream to trigger the ending
-	 * @param {stream} stream - the stream to be ended by the endStream
-	 * @param {stream} the stream modified to be ended by endStream
-	 *
-	 * @example
-	 * var n = flyd.stream(1);
-	 * var killer = flyd.stream();
-	 * // `double` ends when `n` ends or when `killer` emits any value
-	 * var double = flyd.endsOn(flyd.merge(n.end, killer), flyd.combine(function(n) {
-	 *   return 2 * n();
-	 * }, [n]);
-	*/
-	flyd.endsOn = function(endS, s) {
-	  detachDeps(s.end);
-	  endS.listeners.push(s.end);
-	  s.end.deps.push(endS);
-	  return s;
-	}
-	
-	/**
-	 * Map a stream
-	 *
-	 * Returns a new stream consisting of every value from `s` passed through
-	 * `fn`. I.e. `map` creates a new stream that listens to `s` and
-	 * applies `fn` to every new value.
-	 * __Signature__: `(a -> result) -> Stream a -> Stream result`
-	 *
-	 * @name flyd.map
-	 * @param {Function} fn - the function that produces the elements of the new stream
-	 * @param {stream} stream - the stream to map
-	 * @return {stream} a new stream with the mapped values
-	 *
-	 * @example
-	 * var numbers = flyd.stream(0);
-	 * var squaredNumbers = flyd.map(function(n) { return n*n; }, numbers);
-	 */
-	// Library functions use self callback to accept (null, undefined) update triggers.
-	flyd.map = curryN(2, function(f, s) {
-	  return combine(function(s, self) { self(f(s.val)); }, [s]);
-	})
-	
-	/**
-	 * Listen to stream events
-	 *
-	 * Similar to `map` except that the returned stream is empty. Use `on` for doing
-	 * side effects in reaction to stream changes. Use the returned stream only if you
-	 * need to manually end it.
-	 *
-	 * __Signature__: `(a -> result) -> Stream a -> Stream undefined`
-	 *
-	 * @name flyd.on
-	 * @param {Function} cb - the callback
-	 * @param {stream} stream - the stream
-	 * @return {stream} an empty stream (can be ended)
-	 */
-	flyd.on = curryN(2, function(f, s) {
-	  return combine(function(s) { f(s.val); }, [s]);
-	})
-	
-	/**
-	 * Creates a new stream with the results of calling the function on every incoming
-	 * stream with and accumulator and the incoming value.
-	 *
-	 * __Signature__: `(a -> b -> a) -> a -> Stream b -> Stream a`
-	 *
-	 * @name flyd.scan
-	 * @param {Function} fn - the function to call
-	 * @param {*} val - the initial value of the accumulator
-	 * @param {stream} stream - the stream source
-	 * @return {stream} the new stream
-	 *
-	 * @example
-	 * var numbers = flyd.stream();
-	 * var sum = flyd.scan(function(sum, n) { return sum+n; }, 0, numbers);
-	 * numbers(2)(3)(5);
-	 * sum(); // 10
-	 */
-	flyd.scan = curryN(3, function(f, acc, s) {
-	  var ns = combine(function(s, self) {
-	    self(acc = f(acc, s.val));
-	  }, [s]);
-	  if (!ns.hasVal) ns(acc);
-	  return ns;
-	});
-	
-	/**
-	 * Creates a new stream down which all values from both `stream1` and `stream2`
-	 * will be sent.
-	 *
-	 * __Signature__: `Stream a -> Stream a -> Stream a`
-	 *
-	 * @name flyd.merge
-	 * @param {stream} source1 - one stream to be merged
-	 * @param {stream} source2 - the other stream to be merged
-	 * @return {stream} a stream with the values from both sources
-	 *
-	 * @example
-	 * var btn1Clicks = flyd.stream();
-	 * button1Elm.addEventListener(btn1Clicks);
-	 * var btn2Clicks = flyd.stream();
-	 * button2Elm.addEventListener(btn2Clicks);
-	 * var allClicks = flyd.merge(btn1Clicks, btn2Clicks);
-	 */
-	flyd.merge = curryN(2, function(s1, s2) {
-	  var s = flyd.immediate(combine(function(s1, s2, self, changed) {
-	    if (changed[0]) {
-	      self(changed[0]());
-	    } else if (s1.hasVal) {
-	      self(s1.val);
-	    } else if (s2.hasVal) {
-	      self(s2.val);
+	    function getValue(s) {
+	        return s.val;
 	    }
-	  }, [s1, s2]));
-	  flyd.endsOn(combine(function() {
-	    return true;
-	  }, [s1.end, s2.end]), s);
-	  return s;
-	});
-	
-	/**
-	 * Creates a new stream resulting from applying `transducer` to `stream`.
-	 *
-	 * __Signature__: `Transducer -> Stream a -> Stream b`
-	 *
-	 * @name flyd.transduce
-	 * @param {Transducer} xform - the transducer transformation
-	 * @param {stream} source - the stream source
-	 * @return {stream} the new stream
-	 *
-	 * @example
-	 * var t = require('transducers.js');
-	 *
-	 * var results = [];
-	 * var s1 = flyd.stream();
-	 * var tx = t.compose(t.map(function(x) { return x * 2; }), t.dedupe());
-	 * var s2 = flyd.transduce(tx, s1);
-	 * flyd.combine(function(s2) { results.push(s2()); }, [s2]);
-	 * s1(1)(1)(2)(3)(3)(3)(4);
-	 * results; // => [2, 4, 6, 8]
-	 */
-	flyd.transduce = curryN(2, function(xform, source) {
-	  xform = xform(new StreamTransformer());
-	  return combine(function(source, self) {
-	    var res = xform['@@transducer/step'](undefined, source.val);
-	    if (res && res['@@transducer/reduced'] === true) {
-	      self.end(true);
-	      return res['@@transducer/value'];
-	    } else {
-	      return res;
+	    function addListener(fn, s) {
+	        s.listeners.push(fn);
 	    }
-	  }, [source]);
-	});
 	
-	/**
-	 * Returns `fn` curried to `n`. Use this function to curry functions exposed by
-	 * modules for Flyd.
-	 *
-	 * @name flyd.curryN
-	 * @function
-	 * @param {Integer} arity - the function arity
-	 * @param {Function} fn - the function to curry
-	 * @return {Function} the curried function
-	 *
-	 * @example
-	 * function add(x, y) { return x + y; };
-	 * var a = flyd.curryN(2, add);
-	 * a(2)(4) // => 6
-	 */
-	flyd.curryN = curryN
-	
-	/**
-	 * Returns a new stream identical to the original except every
-	 * value will be passed through `f`.
-	 *
-	 * _Note:_ This function is included in order to support the fantasy land
-	 * specification.
-	 *
-	 * __Signature__: Called bound to `Stream a`: `(a -> b) -> Stream b`
-	 *
-	 * @name stream.map
-	 * @param {Function} function - the function to apply
-	 * @return {stream} a new stream with the values mapped
-	 *
-	 * @example
-	 * var numbers = flyd.stream(0);
-	 * var squaredNumbers = numbers.map(function(n) { return n*n; });
-	 */
-	function boundMap(f) { return flyd.map(f, this); }
-	
-	/**
-	 * Returns a new stream which is the result of applying the
-	 * functions from `this` stream to the values in `stream` parameter.
-	 *
-	 * `this` stream must be a stream of functions.
-	 *
-	 * _Note:_ This function is included in order to support the fantasy land
-	 * specification.
-	 *
-	 * __Signature__: Called bound to `Stream (a -> b)`: `a -> Stream b`
-	 *
-	 * @name stream.ap
-	 * @param {stream} stream - the values stream
-	 * @return {stream} a new stram with the functions applied to values
-	 *
-	 * @example
-	 * var add = flyd.curryN(2, function(x, y) { return x + y; });
-	 * var numbers1 = flyd.stream();
-	 * var numbers2 = flyd.stream();
-	 * var addToNumbers1 = flyd.map(add, numbers1);
-	 * var added = addToNumbers1.ap(numbers2);
-	 */
-	function ap(s2) {
-	  var s1 = this;
-	  return combine(function(s1, s2, self) { self(s1.val(s2.val)); }, [s1, s2]);
-	}
-	
-	/**
-	 * Get a human readable view of a stream
-	 * @name stream.toString
-	 * @return {String} the stream string representation
-	 */
-	function streamToString() {
-	  return 'stream(' + this.val + ')';
-	}
-	
-	/**
-	 * @name stream.end
-	 * @memberof stream
-	 * A stream that emits `true` when the stream ends. If `true` is pushed down the
-	 * stream the parent stream ends.
-	 */
-	
-	/**
-	 * @name stream.of
-	 * @function
-	 * @memberof stream
-	 * Returns a new stream with `value` as its initial value. It is identical to
-	 * calling `flyd.stream` with one argument.
-	 *
-	 * __Signature__: Called bound to `Stream (a)`: `b -> Stream b`
-	 *
-	 * @param {*} value - the initial value
-	 * @return {stream} the new stream
-	 *
-	 * @example
-	 * var n = flyd.stream(1);
-	 * var m = n.of(1);
-	 */
-	
-	// /////////////////////////// PRIVATE ///////////////////////////////// //
-	/**
-	 * @private
-	 * Create a stream with no dependencies and no value
-	 * @return {Function} a flyd stream
-	 */
-	function createStream() {
-	  function s(n) {
-	    if (arguments.length === 0) return s.val
-	    updateStreamValue(s, n)
-	    return s
-	  }
-	  s.hasVal = false;
-	  s.val = undefined;
-	  s.vals = [];
-	  s.listeners = [];
-	  s.queued = false;
-	  s.end = undefined;
-	  s.map = boundMap;
-	  s.ap = ap;
-	  s.of = flyd.stream;
-	  s.toString = streamToString;
-	  return s;
-	}
-	
-	/**
-	 * @private
-	 * Create a dependent stream
-	 * @param {Array<stream>} dependencies - an array of the streams
-	 * @param {Function} fn - the function used to calculate the new stream value
-	 * from the dependencies
-	 * @return {stream} the created stream
-	 */
-	function createDependentStream(deps, fn) {
-	  var s = createStream();
-	  s.fn = fn;
-	  s.deps = deps;
-	  s.depsMet = false;
-	  s.depsChanged = deps.length > 0 ? [] : undefined;
-	  s.shouldUpdate = false;
-	  addListeners(deps, s);
-	  return s;
-	}
-	
-	/**
-	 * @private
-	 * Check if all the dependencies have values
-	 * @param {stream} stream - the stream to check depencencies from
-	 * @return {Boolean} `true` if all dependencies have vales, `false` otherwise
-	 */
-	function initialDepsNotMet(stream) {
-	  stream.depsMet = stream.deps.every(function(s) {
-	    return s.hasVal;
-	  });
-	  return !stream.depsMet;
-	}
-	
-	/**
-	 * @private
-	 * Update a dependent stream using its dependencies in an atomic way
-	 * @param {stream} stream - the stream to update
-	 */
-	function updateStream(s) {
-	  if ((s.depsMet !== true && initialDepsNotMet(s)) ||
-	      (s.end !== undefined && s.end.val === true)) return;
-	  if (inStream !== undefined) {
-	    toUpdate.push(s);
-	    return;
-	  }
-	  inStream = s;
-	  if (s.depsChanged) s.fnArgs[s.fnArgs.length - 1] = s.depsChanged;
-	  var returnVal = s.fn.apply(s.fn, s.fnArgs);
-	  if (returnVal !== undefined) {
-	    s(returnVal);
-	  }
-	  inStream = undefined;
-	  if (s.depsChanged !== undefined) s.depsChanged = [];
-	  s.shouldUpdate = false;
-	  if (flushing === false) flushUpdate();
-	}
-	
-	/**
-	 * @private
-	 * Update the dependencies of a stream
-	 * @param {stream} stream
-	 */
-	function updateDeps(s) {
-	  var i, o, list
-	  var listeners = s.listeners;
-	  for (i = 0; i < listeners.length; ++i) {
-	    list = listeners[i];
-	    if (list.end === s) {
-	      endStream(list);
-	    } else {
-	      if (list.depsChanged !== undefined) list.depsChanged.push(s);
-	      list.shouldUpdate = true;
-	      findDeps(list);
+	    function s(v) {
+	        return arguments.length > 0 ? setValue(v, s) : getValue(s);
 	    }
-	  }
-	  for (; orderNextIdx >= 0; --orderNextIdx) {
-	    o = order[orderNextIdx];
-	    if (o.shouldUpdate === true) updateStream(o);
-	    o.queued = false;
-	  }
+	    s.val = initial || null;
+	    s.listeners = [];
+	
+	    s.map = (function (s) {
+	        return function (fn) {
+	            var ns = stream();
+	            addListener(_.compose(ns, fn), s);
+	            return ns;
+	        };
+	    })(s);
+	    s.scan = (function (s) {
+	        return function(fn, acc) {
+	            var ns = stream(acc);
+	            addListener(function (v) {
+	                acc = fn(acc, v);
+	                ns(acc);
+	            }, s);
+	            return ns;
+	        };
+	    })(s);
+	
+	    return s;
 	}
 	
-	/**
-	 * @private
-	 * Add stream dependencies to the global `order` queue.
-	 * @param {stream} stream
-	 * @see updateDeps
-	 */
-	function findDeps(s) {
-	  var i
-	  var listeners = s.listeners;
-	  if (s.queued === false) {
-	    s.queued = true;
-	    for (i = 0; i < listeners.length; ++i) {
-	      findDeps(listeners[i]);
-	    }
-	    order[++orderNextIdx] = s;
-	  }
-	}
-	
-	/**
-	 * @private
-	 */
-	function flushUpdate() {
-	  flushing = true;
-	  while (toUpdate.length > 0) {
-	    var s = toUpdate.shift();
-	    if (s.vals.length > 0) s.val = s.vals.shift();
-	    updateDeps(s);
-	  }
-	  flushing = false;
-	}
-	
-	/**
-	 * @private
-	 * Push down a value into a stream
-	 * @param {stream} stream
-	 * @param {*} value
-	 */
-	function updateStreamValue(s, n) {
-	  if (n !== undefined && n !== null && isFunction(n.then)) {
-	    n.then(s);
-	    return;
-	  }
-	  s.val = n;
-	  s.hasVal = true;
-	  if (inStream === undefined) {
-	    flushing = true;
-	    updateDeps(s);
-	    if (toUpdate.length > 0) flushUpdate(); else flushing = false;
-	  } else if (inStream === s) {
-	    markListeners(s, s.listeners);
-	  } else {
-	    s.vals.push(n);
-	    toUpdate.push(s);
-	  }
-	}
-	
-	/**
-	 * @private
-	 */
-	function markListeners(s, lists) {
-	  var i, list;
-	  for (i = 0; i < lists.length; ++i) {
-	    list = lists[i];
-	    if (list.end !== s) {
-	      if (list.depsChanged !== undefined) {
-	        list.depsChanged.push(s);
-	      }
-	      list.shouldUpdate = true;
-	    } else {
-	      endStream(list);
-	    }
-	  }
-	}
-	
-	/**
-	 * @private
-	 * Add dependencies to a stream
-	 * @param {Array<stream>} dependencies
-	 * @param {stream} stream
-	 */
-	function addListeners(deps, s) {
-	  for (var i = 0; i < deps.length; ++i) {
-	    deps[i].listeners.push(s);
-	  }
-	}
-	
-	/**
-	 * @private
-	 * Removes an stream from a dependency array
-	 * @param {stream} stream
-	 * @param {Array<stream>} dependencies
-	 */
-	function removeListener(s, listeners) {
-	  var idx = listeners.indexOf(s);
-	  listeners[idx] = listeners[listeners.length - 1];
-	  listeners.length--;
-	}
-	
-	/**
-	 * @private
-	 * Detach a stream from its dependencies
-	 * @param {stream} stream
-	 */
-	function detachDeps(s) {
-	  for (var i = 0; i < s.deps.length; ++i) {
-	    removeListener(s, s.deps[i].listeners);
-	  }
-	  s.deps.length = 0;
-	}
-	
-	/**
-	 * @private
-	 * Ends a stream
-	 */
-	function endStream(s) {
-	  if (s.deps !== undefined) detachDeps(s);
-	  if (s.end !== undefined) detachDeps(s.end);
-	}
-	
-	/**
-	 * @private
-	 * transducer stream transformer
-	 */
-	function StreamTransformer() { }
-	StreamTransformer.prototype['@@transducer/init'] = function() { };
-	StreamTransformer.prototype['@@transducer/result'] = function() { };
-	StreamTransformer.prototype['@@transducer/step'] = function(s, v) { return v; };
-	
-	module.exports = flyd;
+	module.exports = stream;
 
 
 /***/ },
-/* 57 */
-[66, 58, 59, 61, 62],
 /* 58 */
-21,
-/* 59 */
-[64, 60],
-/* 60 */
-15,
-/* 61 */
-[65, 59, 60],
-/* 62 */
-[67, 58, 60],
-/* 63 */
 /***/ function(module, exports, __webpack_require__) {
 
 	
 	'use strict';
 	
 	var h = __webpack_require__(6),
-	    Type = __webpack_require__(52),
-	    _ = __webpack_require__(10);
+	    cuid = __webpack_require__(95),
+	    Type = __webpack_require__(53),
+	    _ = __webpack_require__(11);
 	
 	
 	// action
@@ -2781,7 +2420,7 @@
 	// model
 	
 	function init(idx) {
-	    return {count: 0, clicks: 0, idx: idx};
+	    return {count: 0, clicks: 0, idx: idx, cuid: cuid(), _removed: false};
 	}
 	
 	function isRemoved(model) {
@@ -2796,12 +2435,13 @@
 	
 	    var preventDefault = _.tap(function (evt) { evt.preventDefault(); });
 	    var clickAction = _.compose(action, Msg.Click, preventDefault);
-	    var removeAction = _.compose(action, Msg.Remove, preventDefault);
+	    //var removeAction = _.compose(action, Msg.Remove, preventDefault);
 	
 	    if (isRemoved(model)) {
 	        return '';
 	    }
 	    return h('div', {
+	        key: model.cuid,
 	        style: {
 	            textAlign: 'center',
 	            display: 'inline-block',
@@ -2817,7 +2457,7 @@
 	        on: {
 	            click: clickAction
 	        }
-	    }, [h('span', String(count))
+	    }, [h('span', {key: model.cuid + '-i'}, String(count))
 	        //h('span', '/'),
 	        //h('span', String(clicks))
 	        // h('hr'),
@@ -2836,235 +2476,157 @@
 
 
 /***/ },
-/* 64 */
-/***/ function(module, exports, __webpack_require__, __webpack_module_template_argument_0__) {
-
-	var _isPlaceholder = __webpack_require__(__webpack_module_template_argument_0__);
-	
-	
-	/**
-	 * Optimized internal one-arity curry function.
-	 *
-	 * @private
-	 * @category Function
-	 * @param {Function} fn The function to curry.
-	 * @return {Function} The curried function.
-	 */
-	module.exports = function _curry1(fn) {
-	  return function f1(a) {
-	    if (arguments.length === 0 || _isPlaceholder(a)) {
-	      return f1;
-	    } else {
-	      return fn.apply(this, arguments);
-	    }
-	  };
-	};
-
-
-/***/ },
-/* 65 */
-/***/ function(module, exports, __webpack_require__, __webpack_module_template_argument_0__, __webpack_module_template_argument_1__) {
-
-	var _curry1 = __webpack_require__(__webpack_module_template_argument_0__);
-	var _isPlaceholder = __webpack_require__(__webpack_module_template_argument_1__);
-	
-	
-	/**
-	 * Optimized internal two-arity curry function.
-	 *
-	 * @private
-	 * @category Function
-	 * @param {Function} fn The function to curry.
-	 * @return {Function} The curried function.
-	 */
-	module.exports = function _curry2(fn) {
-	  return function f2(a, b) {
-	    switch (arguments.length) {
-	      case 0:
-	        return f2;
-	      case 1:
-	        return _isPlaceholder(a) ? f2
-	             : _curry1(function(_b) { return fn(a, _b); });
-	      default:
-	        return _isPlaceholder(a) && _isPlaceholder(b) ? f2
-	             : _isPlaceholder(a) ? _curry1(function(_a) { return fn(_a, b); })
-	             : _isPlaceholder(b) ? _curry1(function(_b) { return fn(a, _b); })
-	             : fn(a, b);
-	    }
-	  };
-	};
-
-
-/***/ },
-/* 66 */
-/***/ function(module, exports, __webpack_require__, __webpack_module_template_argument_0__, __webpack_module_template_argument_1__, __webpack_module_template_argument_2__, __webpack_module_template_argument_3__) {
-
-	var _arity = __webpack_require__(__webpack_module_template_argument_0__);
-	var _curry1 = __webpack_require__(__webpack_module_template_argument_1__);
-	var _curry2 = __webpack_require__(__webpack_module_template_argument_2__);
-	var _curryN = __webpack_require__(__webpack_module_template_argument_3__);
-	
-	
-	/**
-	 * Returns a curried equivalent of the provided function, with the specified
-	 * arity. The curried function has two unusual capabilities. First, its
-	 * arguments needn't be provided one at a time. If `g` is `R.curryN(3, f)`, the
-	 * following are equivalent:
-	 *
-	 *   - `g(1)(2)(3)`
-	 *   - `g(1)(2, 3)`
-	 *   - `g(1, 2)(3)`
-	 *   - `g(1, 2, 3)`
-	 *
-	 * Secondly, the special placeholder value `R.__` may be used to specify
-	 * "gaps", allowing partial application of any combination of arguments,
-	 * regardless of their positions. If `g` is as above and `_` is `R.__`, the
-	 * following are equivalent:
-	 *
-	 *   - `g(1, 2, 3)`
-	 *   - `g(_, 2, 3)(1)`
-	 *   - `g(_, _, 3)(1)(2)`
-	 *   - `g(_, _, 3)(1, 2)`
-	 *   - `g(_, 2)(1)(3)`
-	 *   - `g(_, 2)(1, 3)`
-	 *   - `g(_, 2)(_, 3)(1)`
-	 *
-	 * @func
-	 * @memberOf R
-	 * @since v0.5.0
-	 * @category Function
-	 * @sig Number -> (* -> a) -> (* -> a)
-	 * @param {Number} length The arity for the returned function.
-	 * @param {Function} fn The function to curry.
-	 * @return {Function} A new, curried function.
-	 * @see R.curry
-	 * @example
-	 *
-	 *      var sumArgs = (...args) => R.sum(args);
-	 *
-	 *      var curriedAddFourNumbers = R.curryN(4, sumArgs);
-	 *      var f = curriedAddFourNumbers(1, 2);
-	 *      var g = f(3);
-	 *      g(4); //=> 10
-	 */
-	module.exports = _curry2(function curryN(length, fn) {
-	  if (length === 1) {
-	    return _curry1(fn);
-	  }
-	  return _arity(length, _curryN(length, [], fn));
-	});
-
-
-/***/ },
-/* 67 */
-/***/ function(module, exports, __webpack_require__, __webpack_module_template_argument_0__, __webpack_module_template_argument_1__) {
-
-	var _arity = __webpack_require__(__webpack_module_template_argument_0__);
-	var _isPlaceholder = __webpack_require__(__webpack_module_template_argument_1__);
-	
-	
-	/**
-	 * Internal curryN function.
-	 *
-	 * @private
-	 * @category Function
-	 * @param {Number} length The arity of the curried function.
-	 * @param {Array} received An array of arguments received thus far.
-	 * @param {Function} fn The function to curry.
-	 * @return {Function} The curried function.
-	 */
-	module.exports = function _curryN(length, received, fn) {
-	  return function() {
-	    var combined = [];
-	    var argsIdx = 0;
-	    var left = length;
-	    var combinedIdx = 0;
-	    while (combinedIdx < received.length || argsIdx < arguments.length) {
-	      var result;
-	      if (combinedIdx < received.length &&
-	          (!_isPlaceholder(received[combinedIdx]) ||
-	           argsIdx >= arguments.length)) {
-	        result = received[combinedIdx];
-	      } else {
-	        result = arguments[argsIdx];
-	        argsIdx += 1;
-	      }
-	      combined[combinedIdx] = result;
-	      if (!_isPlaceholder(result)) {
-	        left -= 1;
-	      }
-	      combinedIdx += 1;
-	    }
-	    return left <= 0 ? fn.apply(this, combined)
-	                     : _arity(left, _curryN(length, combined, fn));
-	  };
-	};
-
-
-/***/ },
-/* 68 */
+/* 59 */,
+/* 60 */,
+/* 61 */,
+/* 62 */,
+/* 63 */,
+/* 64 */,
+/* 65 */,
+/* 66 */,
+/* 67 */,
+/* 68 */,
+/* 69 */,
+/* 70 */,
+/* 71 */,
+/* 72 */,
+/* 73 */,
+/* 74 */,
+/* 75 */,
+/* 76 */,
+/* 77 */,
+/* 78 */,
+/* 79 */,
+/* 80 */,
+/* 81 */,
+/* 82 */,
+/* 83 */,
+/* 84 */,
+/* 85 */,
+/* 86 */,
+/* 87 */,
+/* 88 */,
+/* 89 */,
+/* 90 */,
+/* 91 */,
+/* 92 */,
+/* 93 */,
+/* 94 */,
+/* 95 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var is = __webpack_require__(4);
+	/**
+	 * cuid.js
+	 * Collision-resistant UID generator for browsers and node.
+	 * Sequential for fast db lookups and recency sorting.
+	 * Safe for element IDs and server-side lookups.
+	 *
+	 * Extracted from CLCTR
+	 *
+	 * Copyright (c) Eric Elliott 2012
+	 * MIT License
+	 */
 	
-	function arrInvoker(arr) {
-	  return function() {
-	    if (!arr.length) return;
-	    // Special case when length is two, for performance
-	    arr.length === 2 ? arr[0](arr[1]) : arr[0].apply(undefined, arr.slice(1));
+	/*global window, navigator, document, require, process, module */
+	(function (app) {
+	  'use strict';
+	  var namespace = 'cuid',
+	    c = 0,
+	    blockSize = 4,
+	    base = 36,
+	    discreteValues = Math.pow(base, blockSize),
+	
+	    pad = function pad(num, size) {
+	      var s = "000000000" + num;
+	      return s.substr(s.length-size);
+	    },
+	
+	    randomBlock = function randomBlock() {
+	      return pad((Math.random() *
+	            discreteValues << 0)
+	            .toString(base), blockSize);
+	    },
+	
+	    safeCounter = function () {
+	      c = (c < discreteValues) ? c : 0;
+	      c++; // this is not subliminal
+	      return c - 1;
+	    },
+	
+	    api = function cuid() {
+	      // Starting with a lowercase letter makes
+	      // it HTML element ID friendly.
+	      var letter = 'c', // hard-coded allows for sequential access
+	
+	        // timestamp
+	        // warning: this exposes the exact date and time
+	        // that the uid was created.
+	        timestamp = (new Date().getTime()).toString(base),
+	
+	        // Prevent same-machine collisions.
+	        counter,
+	
+	        // A few chars to generate distinct ids for different
+	        // clients (so different computers are far less
+	        // likely to generate the same id)
+	        fingerprint = api.fingerprint(),
+	
+	        // Grab some more chars from Math.random()
+	        random = randomBlock() + randomBlock();
+	
+	        counter = pad(safeCounter().toString(base), blockSize);
+	
+	      return  (letter + timestamp + counter + fingerprint + random);
+	    };
+	
+	  api.slug = function slug() {
+	    var date = new Date().getTime().toString(36),
+	      counter,
+	      print = api.fingerprint().slice(0,1) +
+	        api.fingerprint().slice(-1),
+	      random = randomBlock().slice(-2);
+	
+	      counter = safeCounter().toString(36).slice(-4);
+	
+	    return date.slice(-2) +
+	      counter + print + random;
 	  };
-	}
 	
-	function fnInvoker(o) {
-	  return function(ev) { 
-	    if (o.fn === null) return;
-	    o.fn(ev); 
+	  api.globalCount = function globalCount() {
+	    // We want to cache the results of this
+	    var cache = (function calc() {
+	        var i,
+	          count = 0;
+	
+	        for (i in window) {
+	          count++;
+	        }
+	
+	        return count;
+	      }());
+	
+	    api.globalCount = function () { return cache; };
+	    return cache;
 	  };
-	}
 	
-	function updateEventListeners(oldVnode, vnode) {
-	  var name, cur, old, elm = vnode.elm,
-	      oldOn = oldVnode.data.on || {}, on = vnode.data.on;
-	  if (!on) return;
-	  for (name in on) {
-	    cur = on[name];
-	    old = oldOn[name];
-	    if (old === undefined) {
-	      if (is.array(cur)) {
-	        elm.addEventListener(name, arrInvoker(cur));
-	      } else {
-	        cur = {fn: cur};
-	        on[name] = cur;
-	        elm.addEventListener(name, fnInvoker(cur));
-	      }
-	    } else if (is.array(old)) {
-	      // Deliberately modify old array since it's captured in closure created with `arrInvoker`
-	      old.length = cur.length;
-	      for (var i = 0; i < old.length; ++i) old[i] = cur[i];
-	      on[name]  = old;
-	    } else {
-	      old.fn = cur;
-	      on[name] = old;
-	    }
-	  }
-	  if (oldOn) {
-	    for (name in oldOn) {
-	      if (on[name] === undefined) {
-	        var old = oldOn[name];
-	        if (is.array(old)) {
-	          old.length = 0;
-	        }
-	        else {
-	          old.fn = null;
-	        }
-	      }
-	    }
-	  }
-	}
+	  api.fingerprint = function browserPrint() {
+	    return pad((navigator.mimeTypes.length +
+	      navigator.userAgent.length).toString(36) +
+	      api.globalCount().toString(36), 4);
+	  };
 	
-	module.exports = {create: updateEventListeners, update: updateEventListeners};
+	  // don't change anything from here down.
+	  if (app.register) {
+	    app.register(namespace, api);
+	  } else if (true) {
+	    module.exports = api;
+	  } else {
+	    app[namespace] = api;
+	  }
+	
+	}(this.applitude || this));
 
 
 /***/ }
-/******/ ])));
+/******/ ]);
 //# sourceMappingURL=bundle.js.map

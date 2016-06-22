@@ -2,6 +2,7 @@
 'use strict';
 
 var h = require('snabbdom/h'),
+    cuid = require('cuid'),
     Type = require('js/type'),
     _ = require('js/_');
 
@@ -19,7 +20,7 @@ var Msg = Type({
 // model
 
 function init(idx) {
-    return {count: 0, clicks: 0, idx: idx};
+    return {count: 0, clicks: 0, idx: idx, cuid: cuid(), _removed: false};
 }
 
 function isRemoved(model) {
@@ -34,12 +35,13 @@ function view(action, model)  {
 
     var preventDefault = _.tap(function (evt) { evt.preventDefault(); });
     var clickAction = _.compose(action, Msg.Click, preventDefault);
-    var removeAction = _.compose(action, Msg.Remove, preventDefault);
+    //var removeAction = _.compose(action, Msg.Remove, preventDefault);
 
     if (isRemoved(model)) {
         return '';
     }
     return h('div', {
+        key: model.cuid,
         style: {
             textAlign: 'center',
             display: 'inline-block',
@@ -55,7 +57,7 @@ function view(action, model)  {
         on: {
             click: clickAction
         }
-    }, [h('span', String(count))
+    }, [h('span', {key: model.cuid + '-i'}, String(count))
         //h('span', '/'),
         //h('span', String(clicks))
         // h('hr'),
