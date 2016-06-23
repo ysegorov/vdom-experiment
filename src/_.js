@@ -12,6 +12,7 @@ var adjust = require('ramda/src/adjust'),
     is = require('ramda/src/is'),
     keys = require('ramda/src/keys'),
     map = require('ramda/src/map'),
+    path = require('ramda/src/path'),
     prop = require('ramda/src/prop'),
     tap = require('ramda/src/tap');
 
@@ -49,11 +50,18 @@ function throttle(fn, timeout) {
     };
 }
 
+function always(smth) {
+    return function () {
+        return smth;
+    };
+}
+
 
 module.exports = {
     isArray: Array.isArray,
     isDefined: isDefined,
     adjust: adjust,
+    always: always,
     append: append,
     assoc: assoc,
     compose: compose,
@@ -65,6 +73,7 @@ module.exports = {
     is: is,
     keys: keys,
     map: map,
+    path: path,
     prop: prop,
     tap: tap,
     throttle: throttle

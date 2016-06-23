@@ -141,9 +141,9 @@
 	        console.log('scroll', evt);
 	        return model;
 	    },
-	    VisibilityChange: function visibility(evt, model) {
-	        console.log('visibility', evt);
-	        return _.assoc('_paused', evt.target.hidden, model);
+	    Visibility: function visibility(state, model) {
+	        console.log('visibility', state);
+	        return _.assoc('_paused', state, model);
 	    },
 	    Navigate: function navigate(loc, model) {
 	        var p = (loc.pathname || '/').slice(1);
@@ -285,12 +285,17 @@
 	    var onResize = _.throttle(_.compose(action, Msg.Resize), 250);
 	    var onScroll = _.debounce(_.compose(action, Msg.Scroll), 100);
 	    var onPopstate = _.compose(action, Msg.Navigate, _.prop('state'));
-	    var onVisibilityChange = _.compose(action, Msg.VisibilityChange);
+	    var onVisibility = _.compose(action, Msg.Visibility);
+	    var onVisibilityChange = _.compose(onVisibility, _.path(['target', 'hidden']));
+	    var onFocus = _.compose(onVisibility, _.always(false));
+	    var onBlur = _.compose(onVisibility, _.always(true));
 	
 	    globalEvents({
 	        resize: onResize,
 	        scroll: onScroll,
-	        popstate: onPopstate
+	        popstate: onPopstate,
+	        blur: onBlur,
+	        focus: onFocus
 	    },
 	    {
 	        visibilitychange: onVisibilityChange
@@ -1001,6 +1006,7 @@
 	    is = __webpack_require__(43),
 	    keys = __webpack_require__(44),
 	    map = __webpack_require__(47),
+	    path = __webpack_require__(62),
 	    prop = __webpack_require__(53),
 	    tap = __webpack_require__(54);
 	
@@ -1038,11 +1044,18 @@
 	    };
 	}
 	
+	function always(smth) {
+	    return function () {
+	        return smth;
+	    };
+	}
+	
 	
 	module.exports = {
 	    isArray: Array.isArray,
 	    isDefined: isDefined,
 	    adjust: adjust,
+	    always: always,
 	    append: append,
 	    assoc: assoc,
 	    compose: compose,
@@ -1054,6 +1067,7 @@
 	    is: is,
 	    keys: keys,
 	    map: map,
+	    path: path,
 	    prop: prop,
 	    tap: tap,
 	    throttle: throttle
@@ -2677,6 +2691,43 @@
 	        }, keys);
 	    }
 	};
+
+
+/***/ },
+/* 62 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var _curry2 = __webpack_require__(19);
+	
+	
+	/**
+	 * Retrieve the value at a given path.
+	 *
+	 * @func
+	 * @memberOf R
+	 * @since v0.2.0
+	 * @category Object
+	 * @sig [String] -> {k: v} -> v | Undefined
+	 * @param {Array} path The path to use.
+	 * @param {Object} obj The object to retrieve the nested property from.
+	 * @return {*} The data at `path`.
+	 * @example
+	 *
+	 *      R.path(['a', 'b'], {a: {b: 2}}); //=> 2
+	 *      R.path(['a', 'b'], {c: {b: 2}}); //=> undefined
+	 */
+	module.exports = _curry2(function path(paths, obj) {
+	  var val = obj;
+	  var idx = 0;
+	  while (idx < paths.length) {
+	    if (val == null) {
+	      return;
+	    }
+	    val = val[paths[idx]];
+	    idx += 1;
+	  }
+	  return val;
+	});
 
 
 /***/ }

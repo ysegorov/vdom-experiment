@@ -66,9 +66,9 @@ var Msg = Type({
         console.log('scroll', evt);
         return model;
     },
-    VisibilityChange: function visibility(evt, model) {
-        console.log('visibility', evt);
-        return _.assoc('_paused', evt.target.hidden, model);
+    Visibility: function visibility(state, model) {
+        console.log('visibility', state);
+        return _.assoc('_paused', state, model);
     },
     Navigate: function navigate(loc, model) {
         var p = (loc.pathname || '/').slice(1);
@@ -210,12 +210,17 @@ function app(Msg, init, elm, loc) {
     var onResize = _.throttle(_.compose(action, Msg.Resize), 250);
     var onScroll = _.debounce(_.compose(action, Msg.Scroll), 100);
     var onPopstate = _.compose(action, Msg.Navigate, _.prop('state'));
-    var onVisibilityChange = _.compose(action, Msg.VisibilityChange);
+    var onVisibility = _.compose(action, Msg.Visibility);
+    var onVisibilityChange = _.compose(onVisibility, _.path(['target', 'hidden']));
+    var onFocus = _.compose(onVisibility, _.always(false));
+    var onBlur = _.compose(onVisibility, _.always(true));
 
     globalEvents({
         resize: onResize,
         scroll: onScroll,
-        popstate: onPopstate
+        popstate: onPopstate,
+        blur: onBlur,
+        focus: onFocus
     },
     {
         visibilitychange: onVisibilityChange
