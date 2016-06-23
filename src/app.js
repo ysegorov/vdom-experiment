@@ -10,6 +10,7 @@ var snabbdom = require('snabbdom'),
         require('snabbdom/modules/eventlisteners')
     ]),
     cuid = require('cuid'),
+    history = require('history'),
     _ = require('js/_'),
     Type = require('js/type'),
     globalEvents = require('js/window-events'),
@@ -17,8 +18,19 @@ var snabbdom = require('snabbdom'),
     Component = require('js/component');
 
 
+function pushState(loc) {
+    history.pushState(loc, '', loc.url);
+}
+
 // action
 
+function makeBlocks(cnt) {
+    var b = [], i;
+    for (i=0; i<cnt; i+=1) {
+        b.push(Component.init(i+2));
+    }
+    return b;
+}
 
 var Msg = Type({
     Component: function component(msg, model) {
@@ -54,21 +66,29 @@ var Msg = Type({
         // console.log('visibility', evt);
         return model;
     },
+    Navigate: function navigate(loc, model) {
+        var p = (loc.pathname || '/').slice(1);
+        p = parseInt(p, 10);
+        if (isNaN(p)) {
+            p = 20;
+        }
+        return _.evolve({
+            location: function () { return loc; },
+            blocks: function () { return makeBlocks(p); }
+        }, model);
+    },
     Start: function start(model) { return model; }
 });
 
 // model
 
 function init() {
-    var b = [], cnt = 150, i;
-    for (i=0; i<cnt; i+=1) {
-        b.push(Component.init(i+2));
-    }
     return {
         cuid: cuid(),
         _paused: false,
+        location: {},
         component: Component.init(1),
-        blocks: b
+        blocks: makeBlocks(150)
     };
 }
 
@@ -80,6 +100,24 @@ var view = _.curryN(2, function (action, model) {
     function blur(evt) {
         evt.target.blur();
     }
+    function preventDefault(evt) {
+        evt.preventDefault();
+    }
+    function hrefToLocation(evt) {
+        var link = evt.target;
+
+        return {
+            protocol: link.protocol,
+            host: link.host,
+            port: link.port,
+            hostname: link.hostname,
+            pathname: link.pathname,
+            search: link.search,
+            hash: link.hash,
+            url: link.href
+        };
+    }
+    var nav = _.compose(action, Msg.Navigate, _.tap(pushState), hrefToLocation, _.tap(preventDefault));
     var children = [
         h('button', {
             on: {
@@ -96,6 +134,14 @@ var view = _.curryN(2, function (action, model) {
                 click: _.compose(action, model._paused ? Msg.Play : Msg.Pause, _.tap(blur))
             }
         }, model._paused ? 'play' : 'pause'),
+        h('span', '::'),
+        h('a', {props: {href: '/'}, on: {click: nav}}, 'home'),
+        h('span', '::'),
+        h('a', {props: {href: '/100'}, on: {click: nav}}, '100'),
+        h('span', '::'),
+        h('a', {props: {href: '/200'}, on: {click: nav}}, '200'),
+        h('span', '::'),
+        h('a', {props: {href: '/300'}, on: {click: nav}}, '300'),
         h('hr'),
         Component.view(_.compose(action, Msg.Component), model.component)
     ];
@@ -158,7 +204,8 @@ function app(elm) {
         }
     });
 
-    globalEvents({resize: _.compose(action, Msg.Resize)},
+    globalEvents({resize: _.compose(action, Msg.Resize),
+                  popstate: _.compose(action, Msg.Navigate, _.prop('state'))},
                  {visibilitychange: _.compose(action, Msg.VisibilityChange)});
 }
 

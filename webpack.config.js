@@ -51,7 +51,8 @@ module.exports = {
     },
     externals: {
         global: 'window',
-        document: 'document'
+        document: 'document',
+        history: 'history'
     },
     resolve: {
         modulesDirectories: ['node_modules'],
