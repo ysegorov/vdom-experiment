@@ -15,10 +15,38 @@ var adjust = require('ramda/src/adjust'),
     prop = require('ramda/src/prop'),
     tap = require('ramda/src/tap');
 
+var slice = [].slice;
 
 function isDefined(smth) {
-    /* jshint eqnull:true */
-    return smth != null;
+    return smth !== undefined && smth !== null;
+}
+
+function debounce(fn, timeout) {
+    var interval;
+    return function debounced() {
+        var args = slice.call(arguments);
+        clearTimeout(interval);
+        interval = setTimeout(function () {
+            fn.apply(null, args);
+        }, timeout);
+    };
+}
+
+function throttle(fn, timeout) {
+    var buff = [], interval;
+    return function throttled() {
+        buff.push(slice.call(arguments));
+        if (interval) { return ; }
+        interval = setInterval(function () {
+            if (buff.length) {
+                fn.apply(null, buff[buff.length - 1]);
+                buff = [];
+            } else {
+                clearInterval(interval);
+                interval = null;
+            }
+        }, timeout);
+    };
 }
 
 
@@ -31,11 +59,13 @@ module.exports = {
     compose: compose,
     curry: curry,
     curryN: curryN,
+    debounce: debounce,
     evolve: evolve,
     flip: flip,
     is: is,
     keys: keys,
     map: map,
     prop: prop,
-    tap: tap
+    tap: tap,
+    throttle: throttle
 };

@@ -1,7 +1,7 @@
 /*!
  * vdom-experiment
  * Yuri Egorov <ysegorov@gmail.com>
- * 0.1.0:1466661008644
+ * 0.1.0:1466672126644
  */
 /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
@@ -53,12 +53,13 @@
 	'use strict';
 	
 	var app = __webpack_require__(1),
-	    doc = __webpack_require__(58),
-	    win= __webpack_require__(57);
+	    global = __webpack_require__(57),
+	    doc = global.document;
 	
 	
 	function run(evt) {
-	    app(doc.getElementById('body'));
+	    doc.removeEventListener('DOMContentLoaded', run);
+	    app(doc.getElementById('body'), doc.location);
 	}
 	
 	if (doc.readyState === 'interactive' || doc.readyState === 'complete') {
@@ -84,10 +85,10 @@
 	        __webpack_require__(10)
 	    ]),
 	    cuid = __webpack_require__(11),
-	    history = __webpack_require__(12),
+	    history = __webpack_require__(57).history,
 	    _ = __webpack_require__(13),
 	    Type = __webpack_require__(55),
-	    globalEvents = __webpack_require__(56),
+	    globalEvents = __webpack_require__(61),
 	    stream = __webpack_require__(59),
 	    Component = __webpack_require__(60);
 	
@@ -136,9 +137,13 @@
 	        console.log('resize', evt);
 	        return model;
 	    },
-	    VisibilityChange: function visibility(evt, model) {
-	        // console.log('visibility', evt);
+	    Scroll: function scroll(evt, model) {
+	        console.log('scroll', evt);
 	        return model;
+	    },
+	    VisibilityChange: function visibility(evt, model) {
+	        console.log('visibility', evt);
+	        return _.assoc('_paused', evt.target.hidden, model);
 	    },
 	    Navigate: function navigate(loc, model) {
 	        var p = (loc.pathname || '/').slice(1);
@@ -150,8 +155,7 @@
 	            location: function () { return loc; },
 	            blocks: function () { return makeBlocks(p); }
 	        }, model);
-	    },
-	    Start: function start(model) { return model; }
+	    }
 	});
 	
 	// model
@@ -188,7 +192,7 @@
 	            pathname: link.pathname,
 	            search: link.search,
 	            hash: link.hash,
-	            url: link.href
+	            href: link.href
 	        };
 	    }
 	    var nav = _.compose(action, Msg.Navigate, _.tap(pushState), hrefToLocation, _.tap(preventDefault));
@@ -229,7 +233,7 @@
 	
 	// app
 	
-	function app(elm) {
+	function app(Msg, init, elm, loc) {
 	
 	    var action = stream();
 	    var model = action.scan(_.flip(Msg.update), init());
@@ -238,7 +242,7 @@
 	    var vnode = model.map(view(action));
 	    vnode.scan(patch, elm);
 	
-	    action(Msg.Start());
+	    action(Msg.Navigate(loc));
 	
 	    var tickAction = _.compose(action, Msg.Tick);
 	
@@ -278,12 +282,22 @@
 	        }
 	    });
 	
-	    globalEvents({resize: _.compose(action, Msg.Resize),
-	                  popstate: _.compose(action, Msg.Navigate, _.prop('state'))},
-	                 {visibilitychange: _.compose(action, Msg.VisibilityChange)});
+	    var onResize = _.throttle(_.compose(action, Msg.Resize), 250);
+	    var onScroll = _.debounce(_.compose(action, Msg.Scroll), 100);
+	    var onPopstate = _.compose(action, Msg.Navigate, _.prop('state'));
+	    var onVisibilityChange = _.compose(action, Msg.VisibilityChange);
+	
+	    globalEvents({
+	        resize: onResize,
+	        scroll: onScroll,
+	        popstate: onPopstate
+	    },
+	    {
+	        visibilitychange: onVisibilityChange
+	    });
 	}
 	
-	module.exports = app;
+	module.exports = _.curryN(4, app)(Msg, init);
 
 
 /***/ },
@@ -969,12 +983,7 @@
 
 
 /***/ },
-/* 12 */
-/***/ function(module, exports) {
-
-	module.exports = history;
-
-/***/ },
+/* 12 */,
 /* 13 */
 /***/ function(module, exports, __webpack_require__) {
 
@@ -995,10 +1004,38 @@
 	    prop = __webpack_require__(53),
 	    tap = __webpack_require__(54);
 	
+	var slice = [].slice;
 	
 	function isDefined(smth) {
-	    /* jshint eqnull:true */
-	    return smth != null;
+	    return smth !== undefined && smth !== null;
+	}
+	
+	function debounce(fn, timeout) {
+	    var interval;
+	    return function debounced() {
+	        var args = slice.call(arguments);
+	        clearTimeout(interval);
+	        interval = setTimeout(function () {
+	            fn.apply(null, args);
+	        }, timeout);
+	    };
+	}
+	
+	function throttle(fn, timeout) {
+	    var buff = [], interval;
+	    return function throttled() {
+	        buff.push(slice.call(arguments));
+	        if (interval) { return ; }
+	        interval = setInterval(function () {
+	            if (buff.length) {
+	                fn.apply(null, buff[buff.length - 1]);
+	                buff = [];
+	            } else {
+	                clearInterval(interval);
+	                interval = null;
+	            }
+	        }, timeout);
+	    };
 	}
 	
 	
@@ -1011,13 +1048,15 @@
 	    compose: compose,
 	    curry: curry,
 	    curryN: curryN,
+	    debounce: debounce,
 	    evolve: evolve,
 	    flip: flip,
 	    is: is,
 	    keys: keys,
 	    map: map,
 	    prop: prop,
-	    tap: tap
+	    tap: tap,
+	    throttle: throttle
 	};
 
 
@@ -2469,47 +2508,14 @@
 
 
 /***/ },
-/* 56 */
-/***/ function(module, exports, __webpack_require__) {
-
-	
-	'use strict';
-	
-	var win = __webpack_require__(57),
-	    doc = __webpack_require__(58),
-	    _ = __webpack_require__(13);
-	
-	
-	module.exports = function (winEvents, docEvents) {
-	    var keys;
-	    if (_.isDefined(winEvents)) {
-	        keys = _.keys(winEvents);
-	        _.map(function (evtName) {
-	            win.addEventListener(evtName, winEvents[evtName], false);
-	        }, keys);
-	    }
-	    if (_.isDefined(docEvents)) {
-	        keys = _.keys(docEvents);
-	        _.map(function (evtName) {
-	            doc.addEventListener(evtName, docEvents[evtName], false);
-	        }, keys);
-	    }
-	};
-
-
-/***/ },
+/* 56 */,
 /* 57 */
 /***/ function(module, exports) {
 
 	module.exports = window;
 
 /***/ },
-/* 58 */
-/***/ function(module, exports) {
-
-	module.exports = document;
-
-/***/ },
+/* 58 */,
 /* 59 */
 /***/ function(module, exports, __webpack_require__) {
 
@@ -2598,7 +2604,7 @@
 	
 	// view
 	
-	function view(action, model)  {
+	function view(Msg, action, model)  {
 	    var count = model.count,
 	        clicks = model.clicks;
 	
@@ -2640,7 +2646,36 @@
 	    update: Msg.update,
 	    Click: Msg.Click,
 	    Tick: Msg.Tick,
-	    view: _.curryN(2, view)
+	    view: _.curryN(3, view)(Msg)
+	};
+
+
+/***/ },
+/* 61 */
+/***/ function(module, exports, __webpack_require__) {
+
+	
+	'use strict';
+	
+	var global = __webpack_require__(57),
+	    doc = global.document,
+	    _ = __webpack_require__(13);
+	
+	
+	module.exports = function (winEvents, docEvents) {
+	    var keys;
+	    if (_.isDefined(winEvents)) {
+	        keys = _.keys(winEvents);
+	        _.map(function (evtName) {
+	            global.addEventListener(evtName, winEvents[evtName], false);
+	        }, keys);
+	    }
+	    if (_.isDefined(docEvents)) {
+	        keys = _.keys(docEvents);
+	        _.map(function (evtName) {
+	            doc.addEventListener(evtName, docEvents[evtName], false);
+	        }, keys);
+	    }
 	};
 
 

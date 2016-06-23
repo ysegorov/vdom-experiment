@@ -50,9 +50,7 @@ module.exports = {
         reasons: true
     },
     externals: {
-        global: 'window',
-        document: 'document',
-        history: 'history'
+        global: 'window'
     },
     resolve: {
         modulesDirectories: ['node_modules'],

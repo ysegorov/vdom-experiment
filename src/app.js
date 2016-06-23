@@ -10,10 +10,10 @@ var snabbdom = require('snabbdom'),
         require('snabbdom/modules/eventlisteners')
     ]),
     cuid = require('cuid'),
-    history = require('history'),
+    history = require('global').history,
     _ = require('js/_'),
     Type = require('js/type'),
-    globalEvents = require('js/window-events'),
+    globalEvents = require('js/global-events'),
     stream = require('js/stream'),
     Component = require('js/component');
 
@@ -62,9 +62,13 @@ var Msg = Type({
         console.log('resize', evt);
         return model;
     },
-    VisibilityChange: function visibility(evt, model) {
-        // console.log('visibility', evt);
+    Scroll: function scroll(evt, model) {
+        console.log('scroll', evt);
         return model;
+    },
+    VisibilityChange: function visibility(evt, model) {
+        console.log('visibility', evt);
+        return _.assoc('_paused', evt.target.hidden, model);
     },
     Navigate: function navigate(loc, model) {
         var p = (loc.pathname || '/').slice(1);
@@ -76,8 +80,7 @@ var Msg = Type({
             location: function () { return loc; },
             blocks: function () { return makeBlocks(p); }
         }, model);
-    },
-    Start: function start(model) { return model; }
+    }
 });
 
 // model
@@ -114,7 +117,7 @@ var view = _.curryN(2, function (action, model) {
             pathname: link.pathname,
             search: link.search,
             hash: link.hash,
-            url: link.href
+            href: link.href
         };
     }
     var nav = _.compose(action, Msg.Navigate, _.tap(pushState), hrefToLocation, _.tap(preventDefault));
@@ -155,7 +158,7 @@ var view = _.curryN(2, function (action, model) {
 
 // app
 
-function app(elm) {
+function app(Msg, init, elm, loc) {
 
     var action = stream();
     var model = action.scan(_.flip(Msg.update), init());
@@ -164,7 +167,7 @@ function app(elm) {
     var vnode = model.map(view(action));
     vnode.scan(patch, elm);
 
-    action(Msg.Start());
+    action(Msg.Navigate(loc));
 
     var tickAction = _.compose(action, Msg.Tick);
 
@@ -204,9 +207,19 @@ function app(elm) {
         }
     });
 
-    globalEvents({resize: _.compose(action, Msg.Resize),
-                  popstate: _.compose(action, Msg.Navigate, _.prop('state'))},
-                 {visibilitychange: _.compose(action, Msg.VisibilityChange)});
+    var onResize = _.throttle(_.compose(action, Msg.Resize), 250);
+    var onScroll = _.debounce(_.compose(action, Msg.Scroll), 100);
+    var onPopstate = _.compose(action, Msg.Navigate, _.prop('state'));
+    var onVisibilityChange = _.compose(action, Msg.VisibilityChange);
+
+    globalEvents({
+        resize: onResize,
+        scroll: onScroll,
+        popstate: onPopstate
+    },
+    {
+        visibilitychange: onVisibilityChange
+    });
 }
 
-module.exports = app;
+module.exports = _.curryN(4, app)(Msg, init);

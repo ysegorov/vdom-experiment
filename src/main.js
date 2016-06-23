@@ -2,12 +2,13 @@
 'use strict';
 
 var app = require('js/app'),
-    doc = require('document'),
-    win= require('global');
+    global = require('global'),
+    doc = global.document;
 
 
 function run(evt) {
-    app(doc.getElementById('body'));
+    doc.removeEventListener('DOMContentLoaded', run);
+    app(doc.getElementById('body'), doc.location);
 }
 
 if (doc.readyState === 'interactive' || doc.readyState === 'complete') {

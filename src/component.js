@@ -29,7 +29,7 @@ function isRemoved(model) {
 
 // view
 
-function view(action, model)  {
+function view(Msg, action, model)  {
     var count = model.count,
         clicks = model.clicks;
 
@@ -71,5 +71,5 @@ module.exports = {
     update: Msg.update,
     Click: Msg.Click,
     Tick: Msg.Tick,
-    view: _.curryN(2, view)
+    view: _.curryN(3, view)(Msg)
 };
