@@ -1,7 +1,7 @@
 /*!
  * vdom-experiment
  * Yuri Egorov <ysegorov@gmail.com>
- * 0.1.0:1466672126644
+ * 0.1.0:1467017461558
  */
 /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
@@ -53,7 +53,7 @@
 	'use strict';
 	
 	var app = __webpack_require__(1),
-	    global = __webpack_require__(57),
+	    global = __webpack_require__(12),
 	    doc = global.document;
 	
 	
@@ -85,16 +85,16 @@
 	        __webpack_require__(10)
 	    ]),
 	    cuid = __webpack_require__(11),
-	    history = __webpack_require__(57).history,
+	    history = __webpack_require__(12).history,
 	    _ = __webpack_require__(13),
-	    Type = __webpack_require__(55),
-	    globalEvents = __webpack_require__(61),
-	    stream = __webpack_require__(59),
-	    Component = __webpack_require__(60);
+	    Type = __webpack_require__(56),
+	    globalEvents = __webpack_require__(57),
+	    stream = __webpack_require__(58),
+	    Component = __webpack_require__(59);
 	
 	
 	function pushState(loc) {
-	    history.pushState(loc, '', loc.url);
+	    history.pushState(loc, '', loc.href);
 	}
 	
 	// action
@@ -988,7 +988,12 @@
 
 
 /***/ },
-/* 12 */,
+/* 12 */
+/***/ function(module, exports) {
+
+	module.exports = window;
+
+/***/ },
 /* 13 */
 /***/ function(module, exports, __webpack_require__) {
 
@@ -1006,9 +1011,9 @@
 	    is = __webpack_require__(43),
 	    keys = __webpack_require__(44),
 	    map = __webpack_require__(47),
-	    path = __webpack_require__(62),
-	    prop = __webpack_require__(53),
-	    tap = __webpack_require__(54);
+	    path = __webpack_require__(53),
+	    prop = __webpack_require__(54),
+	    tap = __webpack_require__(55);
 	
 	var slice = [].slice;
 	
@@ -2426,6 +2431,43 @@
 	
 	
 	/**
+	 * Retrieve the value at a given path.
+	 *
+	 * @func
+	 * @memberOf R
+	 * @since v0.2.0
+	 * @category Object
+	 * @sig [String] -> {k: v} -> v | Undefined
+	 * @param {Array} path The path to use.
+	 * @param {Object} obj The object to retrieve the nested property from.
+	 * @return {*} The data at `path`.
+	 * @example
+	 *
+	 *      R.path(['a', 'b'], {a: {b: 2}}); //=> 2
+	 *      R.path(['a', 'b'], {c: {b: 2}}); //=> undefined
+	 */
+	module.exports = _curry2(function path(paths, obj) {
+	  var val = obj;
+	  var idx = 0;
+	  while (idx < paths.length) {
+	    if (val == null) {
+	      return;
+	    }
+	    val = val[paths[idx]];
+	    idx += 1;
+	  }
+	  return val;
+	});
+
+
+/***/ },
+/* 54 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var _curry2 = __webpack_require__(19);
+	
+	
+	/**
 	 * Returns a function that when supplied an object returns the indicated
 	 * property of that object, if it exists.
 	 *
@@ -2446,7 +2488,7 @@
 
 
 /***/ },
-/* 54 */
+/* 55 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var _curry2 = __webpack_require__(19);
@@ -2476,7 +2518,7 @@
 
 
 /***/ },
-/* 55 */
+/* 56 */
 /***/ function(module, exports, __webpack_require__) {
 
 	
@@ -2522,15 +2564,36 @@
 
 
 /***/ },
-/* 56 */,
 /* 57 */
-/***/ function(module, exports) {
+/***/ function(module, exports, __webpack_require__) {
 
-	module.exports = window;
+	
+	'use strict';
+	
+	var global = __webpack_require__(12),
+	    doc = global.document,
+	    _ = __webpack_require__(13);
+	
+	
+	module.exports = function (winEvents, docEvents) {
+	    var keys;
+	    if (_.isDefined(winEvents)) {
+	        keys = _.keys(winEvents);
+	        _.map(function (evtName) {
+	            global.addEventListener(evtName, winEvents[evtName], false);
+	        }, keys);
+	    }
+	    if (_.isDefined(docEvents)) {
+	        keys = _.keys(docEvents);
+	        _.map(function (evtName) {
+	            doc.addEventListener(evtName, docEvents[evtName], false);
+	        }, keys);
+	    }
+	};
+
 
 /***/ },
-/* 58 */,
-/* 59 */
+/* 58 */
 /***/ function(module, exports, __webpack_require__) {
 
 	
@@ -2542,6 +2605,10 @@
 	function stream(initial) {
 	
 	    function setValue(v, s) {
+	        if (v && typeof v === 'object' && typeof v.then === 'function') {
+	            v.then(s);
+	            return ;
+	        }
 	        s.val = v;
 	        s.listeners.forEach(function inner(fn) { fn(v); });
 	        return v;
@@ -2584,7 +2651,7 @@
 
 
 /***/ },
-/* 60 */
+/* 59 */
 /***/ function(module, exports, __webpack_require__) {
 
 	
@@ -2592,7 +2659,7 @@
 	
 	var h = __webpack_require__(6),
 	    cuid = __webpack_require__(11),
-	    Type = __webpack_require__(55),
+	    Type = __webpack_require__(56),
 	    _ = __webpack_require__(13);
 	
 	
@@ -2662,72 +2729,6 @@
 	    Tick: Msg.Tick,
 	    view: _.curryN(3, view)(Msg)
 	};
-
-
-/***/ },
-/* 61 */
-/***/ function(module, exports, __webpack_require__) {
-
-	
-	'use strict';
-	
-	var global = __webpack_require__(57),
-	    doc = global.document,
-	    _ = __webpack_require__(13);
-	
-	
-	module.exports = function (winEvents, docEvents) {
-	    var keys;
-	    if (_.isDefined(winEvents)) {
-	        keys = _.keys(winEvents);
-	        _.map(function (evtName) {
-	            global.addEventListener(evtName, winEvents[evtName], false);
-	        }, keys);
-	    }
-	    if (_.isDefined(docEvents)) {
-	        keys = _.keys(docEvents);
-	        _.map(function (evtName) {
-	            doc.addEventListener(evtName, docEvents[evtName], false);
-	        }, keys);
-	    }
-	};
-
-
-/***/ },
-/* 62 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var _curry2 = __webpack_require__(19);
-	
-	
-	/**
-	 * Retrieve the value at a given path.
-	 *
-	 * @func
-	 * @memberOf R
-	 * @since v0.2.0
-	 * @category Object
-	 * @sig [String] -> {k: v} -> v | Undefined
-	 * @param {Array} path The path to use.
-	 * @param {Object} obj The object to retrieve the nested property from.
-	 * @return {*} The data at `path`.
-	 * @example
-	 *
-	 *      R.path(['a', 'b'], {a: {b: 2}}); //=> 2
-	 *      R.path(['a', 'b'], {c: {b: 2}}); //=> undefined
-	 */
-	module.exports = _curry2(function path(paths, obj) {
-	  var val = obj;
-	  var idx = 0;
-	  while (idx < paths.length) {
-	    if (val == null) {
-	      return;
-	    }
-	    val = val[paths[idx]];
-	    idx += 1;
-	  }
-	  return val;
-	});
 
 
 /***/ }
