@@ -19,7 +19,7 @@ var snabbdom = require('snabbdom'),
 
 
 function pushState(loc) {
-    history.pushState(loc, '', loc.url);
+    history.pushState(loc, '', loc.href);
 }
 
 // action
