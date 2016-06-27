@@ -1,0 +1,188 @@
+/* http://ryanmorr.com/project-agnostic-css-declaration-blocks/ */
+
+html {
+    box-sizing: border-box;
+    font-family: $font-family;
+}
+*, *:before, *:after {
+    box-sizing: inherit;
+}
+
+p {
+    padding-bottom: .5em;
+}
+a {
+    color: $white-alpha-40;
+}
+a:hover, a:focus, a:active {
+    color: $white-alpha-80;
+}
+
+.clearfix:before,
+.clearfix:after {
+    content: " ";
+    display: table;
+}
+
+.clearfix:after {
+    clear: both;
+}
+
+.pull-right {
+    float: right !important;
+}
+
+.pull-left {
+    float: left !important;
+}
+
+.center-x {
+    display: block;
+    margin-right: auto;
+    margin-left: auto;
+}
+
+.center-xy {
+    margin: 0 auto;
+    display: table;
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.ib {
+    display: inline-block;
+}
+.ib.middle {
+    vertical-align: middle;
+}
+
+.show {
+    display: block !important;
+}
+
+.hide {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+.invisible {
+    visibility: hidden;
+}
+
+.hidden-accessible {
+    border: 0;
+    clip: rect(0 0 0 0);
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    width: 1px;
+}
+
+.hide-text {
+    text-indent: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.text-left {
+    text-align: left;
+}
+.text-right {
+    text-align: right;
+}
+.text-center {
+    text-align: center;
+}
+.text-small {
+    font-size: 14px;
+}
+.text-large {
+    font-size: 22px;
+    line-height: 1.25;
+}
+.text-italic {
+    font-style: italic;
+}
+.nowrap {
+    white-space: nowrap;
+}
+
+.img-responsive {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+.transition {
+    transition: all 0.3s ease-out;
+}
+.fade {
+    opacity: 0;
+    transition: opacity 0.15s linear;
+}
+
+.fade.in {
+    opacity: 1;
+}
+.collapse {
+    position: relative;
+    height: 0;
+    overflow: hidden;
+    transition: height 0.35s ease;
+}
+
+.collapse.in {
+    height: auto;
+}
+
+
+.visible-phone,
+.visible-tablet,
+.visible-desktop {
+    display: none !important;
+}
+
+.hidden-phone,
+.hidden-tablet,
+.hidden-desktop {
+    display: block !important;
+}
+
+/* Phones */
+@media screen and (max-width: 37.5em) {
+    .visible-phone {
+        display: block !important;
+    }
+    .visible-desktop,
+    .visible-tablet,
+    .hidden-phone {
+        display: none !important;
+    }
+}
+
+/* Tablets */
+@media screen and (min-width: 37.5em) and (max-width: 64em) {
+    .visible-tablet {
+        display: block !important;
+    }
+    .visible-desktop,
+    .visible-phone,
+    .hidden-tablet {
+        display: none !important;
+    }
+}
+
+/* Desktops */
+@media screen and (min-width: 64em) {
+    .visible-desktop {
+        display: block !important;
+    }
+    .visible-phone,
+    .visible-tablet,
+    .hidden-desktop {
+        display: none !important;
+    }
+}

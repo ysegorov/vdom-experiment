@@ -5,24 +5,23 @@ var snabbdom = require('snabbdom'),
     h = require('snabbdom/h'),
     patch = snabbdom.init([
         require('snabbdom/modules/class'),
+        require('snabbdom/modules/attributes'),
         require('snabbdom/modules/style'),
         require('snabbdom/modules/props'),
+        require('snabbdom/modules/dataset'),
         require('snabbdom/modules/eventlisteners')
     ]),
     cuid = require('cuid'),
     history = require('global').history,
     _ = require('js/_'),
     Type = require('js/type'),
+    icons = require('js/svg'),
     globalEvents = require('js/global-events'),
     stream = require('js/stream'),
     Component = require('js/component');
 
 
-function pushState(loc) {
-    history.pushState(loc, '', loc.href);
-}
-
-// action
+// action/update
 
 function makeBlocks(cnt) {
     var b = [], i;
@@ -106,6 +105,9 @@ var view = _.curryN(2, function (action, model) {
     function preventDefault(evt) {
         evt.preventDefault();
     }
+    function pushState(loc) {
+        history.pushState(loc, '', loc.href);
+    }
     function hrefToLocation(evt) {
         var link = evt.target;
 
@@ -124,19 +126,22 @@ var view = _.curryN(2, function (action, model) {
     var children = [
         h('button', {
             on: {
-                click: _.compose(action, Msg.Add(model.blocks.length + 1), _.tap(blur))
+                click: _.compose(action, Msg.Add(model.blocks.length + 1), _.tap(preventDefault)),
+                keydown: _.tap(preventDefault)
             }
-        }, '+'),
+        }, [icons.plus]),
         h('button', {
             on: {
-                click: _.compose(action, Msg.Clear, _.tap(blur))
+                click: _.compose(action, Msg.Clear, _.tap(preventDefault)),
+                keydown: _.tap(preventDefault)
             }
-        }, '-'),
+        }, [icons.minus]),
         h('button', {
             on: {
-                click: _.compose(action, model._paused ? Msg.Play : Msg.Pause, _.tap(blur))
+                click: _.compose(action, model._paused ? Msg.Play : Msg.Pause, _.tap(preventDefault)),
+                keydown: _.tap(preventDefault)
             }
-        }, model._paused ? 'play' : 'pause'),
+        }, [model._paused ? icons.play : icons.pause]),
         h('span', '::'),
         h('a', {props: {href: '/'}, on: {click: nav}}, 'home'),
         h('span', '::'),
@@ -152,7 +157,7 @@ var view = _.curryN(2, function (action, model) {
     model.blocks.forEach(function (block, idx) {
         children.push(Component.view(_.compose(action, Msg.Block(idx)), block));
     });
-    return h('div', {key: model.cuid}, children);
+    return h('div.layout', {key: model.cuid}, children);
 });
 
 

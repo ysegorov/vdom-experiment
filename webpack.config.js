@@ -6,7 +6,9 @@ var path = require('path');
 
 var webpack = require('webpack');
 
-var dirJs = path.resolve(__dirname, 'src');
+var svgLoader = path.join(__dirname, 'scripts', 'svg-snabbdom-loader');
+
+var dirJs = path.resolve(__dirname, 'src', 'js');
 var dirBuild = path.resolve(__dirname, 'dist', 'js');
 
 var info = require('./package.json'),
@@ -37,11 +39,15 @@ module.exports = {
     module: {
         preLoaders: [{
             test: /\.js$/,
-            include: /src/,
+            include: /src\/js/,
             exclude: /node_modules/,
             loader: 'jshint'
         }],
-        loaders: []
+        loaders: [{
+            test: /\.svg$/,
+            include: /src\/svg/,
+            loader: svgLoader
+        }]
     },
     plugins: plugins,
     stats: {
@@ -55,7 +61,8 @@ module.exports = {
     resolve: {
         modulesDirectories: ['node_modules'],
         alias: {
-            js: __dirname + '/src'
+            js: __dirname + '/src/js',
+            svg: __dirname + '/src/svg'
         }
     },
     // Create Sourcemaps for the bundle
