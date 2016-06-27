@@ -7,6 +7,10 @@ var _ = require('js/_');
 function stream(initial) {
 
     function setValue(v, s) {
+        if (v && typeof v === 'object' && typeof v.then === 'function') {
+            v.then(s);
+            return ;
+        }
         s.val = v;
         s.listeners.forEach(function inner(fn) { fn(v); });
         return v;
