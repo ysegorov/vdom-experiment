@@ -1,7 +1,7 @@
 /*!
  * vdom-experiment
  * Yuri Egorov <ysegorov@gmail.com>
- * 0.1.0:1467276935066
+ * 0.1.0:1467292598308
  */
 /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
@@ -91,9 +91,10 @@
 	    _ = __webpack_require__(15),
 	    Type = __webpack_require__(58),
 	    icons = __webpack_require__(59),
-	    globalEvents = __webpack_require__(64),
-	    stream = __webpack_require__(65),
-	    Component = __webpack_require__(66);
+	    layout = __webpack_require__(68),
+	    globalEvents = __webpack_require__(69),
+	    stream = __webpack_require__(70),
+	    Component = __webpack_require__(71);
 	
 	
 	// action/update
@@ -172,8 +173,11 @@
 	
 	// view
 	
+	var view = _.curryN(2, function view (action, model) {
+	    return layout.view(action, model);
+	});
 	
-	var view = _.curryN(2, function (action, model) {
+	var blocksView = _.curryN(2, function (action, model) {
 	    function blur(evt) {
 	        evt.target.blur();
 	    }
@@ -249,6 +253,7 @@
 	
 	    action(Msg.Navigate(loc));
 	
+	    /*
 	    var tickAction = _.compose(action, Msg.Tick);
 	
 	
@@ -286,6 +291,7 @@
 	            }
 	        }
 	    });
+	    */
 	
 	    var onResize = _.throttle(_.compose(action, Msg.Resize), 250);
 	    var onScroll = _.debounce(_.compose(action, Msg.Scroll), 100);
@@ -2648,13 +2654,21 @@
 	var plus = __webpack_require__(60),
 	    play = __webpack_require__(61),
 	    pause = __webpack_require__(62),
-	    minus = __webpack_require__(63);
+	    minus = __webpack_require__(63),
+	    home = __webpack_require__(64),
+	    sandbox = __webpack_require__(65),
+	    icons = __webpack_require__(66),
+	    settings = __webpack_require__(67);
 	
 	module.exports = {
+	    home: home,
+	    icons: icons,
 	    plus: plus,
 	    play: play,
 	    pause: pause,
-	    minus: minus
+	    minus: minus,
+	    sandbox: sandbox,
+	    settings: settings
 	};
 
 
@@ -2712,6 +2726,115 @@
 
 	
 	'use strict';
+	var h = __webpack_require__(6);
+	module.exports = h('svg', {key: 'svg-home',
+	attrs: {"viewBox":"0 0 20 20","class":"svg-icon"}},
+	[h('path', {attrs: {"d":"M18.672 11H17v6c0 .445-.194 1-1 1h-4v-6H8v6H4c-.806 0-1-.555-1-1v-6H1.328c-.598 0-.47-.324-.06-.748L9.292 2.22c.195-.202.451-.302.708-.312.257.01.513.109.708.312l8.023 8.031c.411.425.539.749-.059.749z"}},
+	[])]);
+
+/***/ },
+/* 65 */
+/***/ function(module, exports, __webpack_require__) {
+
+	
+	'use strict';
+	var h = __webpack_require__(6);
+	module.exports = h('svg', {key: 'svg-block',
+	attrs: {"viewBox":"0 0 20 20","class":"svg-icon"}},
+	[h('path', {attrs: {"d":"M10 .4C4.697.4.399 4.698.399 10A9.6 9.6 0 0 0 10 19.601c5.301 0 9.6-4.298 9.6-9.601 0-5.302-4.299-9.6-9.6-9.6zM2.399 10a7.6 7.6 0 0 1 12.417-5.877L4.122 14.817A7.568 7.568 0 0 1 2.399 10zm7.6 7.599a7.56 7.56 0 0 1-4.815-1.722L15.878 5.184a7.6 7.6 0 0 1-5.879 12.415z"}},
+	[])]);
+
+/***/ },
+/* 66 */
+/***/ function(module, exports, __webpack_require__) {
+
+	
+	'use strict';
+	var h = __webpack_require__(6);
+	module.exports = h('svg', {key: 'svg-images',
+	attrs: {"viewBox":"0 0 20 20","class":"svg-icon"}},
+	[h('path', {attrs: {"d":"M17.125 6.17L15.079.535c-.151-.416-.595-.637-.989-.492L.492 5.006c-.394.144-.593.597-.441 1.013l2.156 5.941V8.777c0-1.438 1.148-2.607 2.56-2.607H8.36l4.285-3.008 2.479 3.008h2.001zM19.238 8H4.767a.761.761 0 0 0-.762.777v9.42c.001.444.343.803.762.803h14.471c.42 0 .762-.359.762-.803v-9.42A.761.761 0 0 0 19.238 8zM18 17H6v-2l1.984-4.018 2.768 3.436 2.598-2.662 3.338-1.205L18 14v3z"}},
+	[])]);
+
+/***/ },
+/* 67 */
+/***/ function(module, exports, __webpack_require__) {
+
+	
+	'use strict';
+	var h = __webpack_require__(6);
+	module.exports = h('svg', {key: 'svg-cog',
+	attrs: {"viewBox":"0 0 20 20","class":"svg-icon"}},
+	[h('path', {attrs: {"d":"M16.783 10c0-1.049.646-1.875 1.617-2.443a8.932 8.932 0 0 0-.692-1.672c-1.089.285-1.97-.141-2.711-.883-.741-.74-.968-1.621-.683-2.711a8.732 8.732 0 0 0-1.672-.691c-.568.97-1.595 1.615-2.642 1.615-1.048 0-2.074-.645-2.643-1.615a8.697 8.697 0 0 0-1.671.691c.285 1.09.059 1.971-.684 2.711-.74.742-1.621 1.168-2.711.883A8.797 8.797 0 0 0 1.6 7.557c.97.568 1.615 1.394 1.615 2.443 0 1.047-.645 2.074-1.615 2.643a8.89 8.89 0 0 0 .691 1.672c1.09-.285 1.971-.059 2.711.682.741.742.969 1.623.684 2.711a8.841 8.841 0 0 0 1.672.693c.568-.973 1.595-1.617 2.643-1.617 1.047 0 2.074.645 2.643 1.617a8.963 8.963 0 0 0 1.672-.693c-.285-1.088-.059-1.969.683-2.711.741-.74 1.622-1.166 2.711-.883a8.811 8.811 0 0 0 .692-1.672c-.973-.569-1.619-1.395-1.619-2.442zM10 13.652a3.652 3.652 0 1 1 0-7.306 3.653 3.653 0 0 1 0 7.306z"}},
+	[])]);
+
+/***/ },
+/* 68 */
+/***/ function(module, exports, __webpack_require__) {
+
+	
+	'use strict';
+	
+	var h = __webpack_require__(6);
+	var icons = __webpack_require__(59);
+	
+	
+	function span(text) { return h('span.text', {}, text); }
+	
+	function navItem(prefix, props, children) {
+	    var itemCl = prefix + '-item';
+	    var linkCl = prefix + '-link';
+	    return h('li.' + itemCl, {}, [h('a.' + linkCl, {props: props}, children || [])]);
+	}
+	
+	function header(action) {
+	    return h('div.main-header', {}, [
+	    ]);
+	}
+	
+	function footer(action) {
+	
+	    return h('div.main-footer', {}, [
+	        h('ul.footer-nav', {}, [
+	            navItem('footer-nav', {href: '#about', title: 'About'}, [span('About')]),
+	            navItem('footer-nav', {href: '#credits', title: 'Credits'}, [span('Credits')]),
+	        ]),
+	        h('span.footer-copyright', {}, 'Copyright (c) ' + (new Date()).getFullYear())
+	    ]);
+	}
+	
+	function nav(action) {
+	    return h('ul.main-nav', {}, [
+	        h('li.logo'),
+	        navItem('main-nav', {href: '#', title: 'Home'}, [icons.home, span('Home')]),
+	        navItem('main-nav', {href: '#icons', title: 'Icons'}, [icons.icons, span('Icons')]),
+	        navItem('main-nav', {href: '#sandbox', title: 'Sandbox'}, [icons.sandbox, span('Sandbox')]),
+	        navItem('main-nav', {href: '#settings', title: 'Settings'}, [icons.settings, span('Settings')])
+	    ]);
+	}
+	
+	function view(action, model) {
+	    return h('div.layout', {}, [
+	        header(action),
+	        h('div.main-body', {}, [
+	            h('div.main-left-col', {}, [
+	                nav(action),
+	                footer(action)
+	            ]),
+	            h('div.main-content', {}, 'Main content')
+	        ]),
+	    ]);
+	}
+	
+	module.exports = {view: view};
+
+
+/***/ },
+/* 69 */
+/***/ function(module, exports, __webpack_require__) {
+
+	
+	'use strict';
 	
 	var global = __webpack_require__(14),
 	    doc = global.document,
@@ -2736,7 +2859,7 @@
 
 
 /***/ },
-/* 65 */
+/* 70 */
 /***/ function(module, exports, __webpack_require__) {
 
 	
@@ -2794,7 +2917,7 @@
 
 
 /***/ },
-/* 66 */
+/* 71 */
 /***/ function(module, exports, __webpack_require__) {
 
 	
