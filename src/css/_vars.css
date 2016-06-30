@@ -1,7 +1,22 @@
 
 $font-family: Roboto, sans-serif;
 
+$white-alpha-20: rgba(255, 255, 255, .2);
 $white-alpha-40: rgba(255, 255, 255, .4);
+$white-alpha-60: rgba(255, 255, 255, .6);
 $white-alpha-80: rgba(255, 255, 255, .8);
 
+$black-alpha-20: rgba(0, 0, 0, .2);
+
 $bg: rgb(69, 63, 51);
+
+$base-size: 24px;
+$pad-large: 18px;
+$pad: 12px;
+$pad-small: 6px;
+$pad-mini: 4px;
+$pad-tiny: 2px;
+
+$nav-width: 220px;
+$nav-bottom-pad: 122px;
+$footer-height: 110px;

@@ -43,8 +43,7 @@ module.exports = {
         }],
         loaders: [{
             test: /\.svg$/,
-            include: /src\/svg/,
-            loader: 'svg-snabbdom-loader!svgo-loader'
+            loader: 'svg-snabbdom-loader?omitFill=true!svgo-loader'
         }]
     },
     plugins: plugins,

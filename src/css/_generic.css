@@ -12,7 +12,8 @@ p {
     padding-bottom: .5em;
 }
 a {
-    color: $white-alpha-40;
+    color: $white-alpha-60;
+    text-decoration: none;
 }
 a:hover, a:focus, a:active {
     color: $white-alpha-80;

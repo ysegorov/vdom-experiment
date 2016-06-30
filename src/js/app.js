@@ -16,6 +16,7 @@ var snabbdom = require('snabbdom'),
     _ = require('js/_'),
     Type = require('js/type'),
     icons = require('js/svg'),
+    layout = require('js/layout'),
     globalEvents = require('js/global-events'),
     stream = require('js/stream'),
     Component = require('js/component');
@@ -97,8 +98,11 @@ function init() {
 
 // view
 
+var view = _.curryN(2, function view (action, model) {
+    return layout.view(action, model);
+});
 
-var view = _.curryN(2, function (action, model) {
+var blocksView = _.curryN(2, function (action, model) {
     function blur(evt) {
         evt.target.blur();
     }
@@ -174,6 +178,7 @@ function app(Msg, init, elm, loc) {
 
     action(Msg.Navigate(loc));
 
+    /*
     var tickAction = _.compose(action, Msg.Tick);
 
 
@@ -211,6 +216,7 @@ function app(Msg, init, elm, loc) {
             }
         }
     });
+    */
 
     var onResize = _.throttle(_.compose(action, Msg.Resize), 250);
     var onScroll = _.debounce(_.compose(action, Msg.Scroll), 100);

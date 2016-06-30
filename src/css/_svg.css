@@ -3,7 +3,16 @@
     width: 1em;
     height: 1em;
     fill: currentColor;
-    margin: .2em .5em .2em .2em;
+    margin: .2em;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.svg-icon-large {
+    width: 2em;
+    height: 2em;
+    fill: currentColor;
+    margin: .2em;
     display: inline-block;
     vertical-align: middle;
 }
