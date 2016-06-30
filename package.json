@@ -25,7 +25,6 @@
   },
   "devDependencies": {
     "autoprefixer": "^6.3.6",
-    "cheerio": "^0.20.0",
     "chokidar-cli": "^1.2.0",
     "cli-color": "^1.1.0",
     "csswring": "^5.0.0",
@@ -37,7 +36,9 @@
     "postcss-discard-comments": "^2.0.4",
     "postcss-import": "^8.1.2",
     "postcss-simple-vars": "^2.0.0",
+    "svg-snabbdom-loader": "^0.1.0",
     "svgo": "^0.6.6",
+    "svgo-loader": "^1.1.0",
     "webpack": "^1.13.1"
   }
 }

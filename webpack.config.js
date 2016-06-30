@@ -6,8 +6,6 @@ var path = require('path');
 
 var webpack = require('webpack');
 
-var svgLoader = path.join(__dirname, 'scripts', 'svg-snabbdom-loader');
-
 var dirJs = path.resolve(__dirname, 'src', 'js');
 var dirBuild = path.resolve(__dirname, 'dist', 'js');
 
@@ -46,7 +44,7 @@ module.exports = {
         loaders: [{
             test: /\.svg$/,
             include: /src\/svg/,
-            loader: svgLoader
+            loader: 'svg-snabbdom-loader!svgo-loader'
         }]
     },
     plugins: plugins,
