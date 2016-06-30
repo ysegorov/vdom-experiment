@@ -1,7 +1,7 @@
 /*!
  * vdom-experiment
  * Yuri Egorov <ysegorov@gmail.com>
- * 0.1.0:1467044607695
+ * 0.1.0:1467276935066
  */
 /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
@@ -2665,7 +2665,10 @@
 	
 	'use strict';
 	var h = __webpack_require__(6);
-	module.exports = h('svg', {key: 'svg-plus',attrs: {"viewBox":"0 0 64 64","class":"svg-icon"}}, [h('path', {attrs: {"d":"M52 29H35V12a3 3 0 1 0-6 0v17H12a3 3 0 1 0 0 6h17v17a3 3 0 1 0 6 0V35h17a3 3 0 1 0 0-6z"}}, [])]);
+	module.exports = h('svg', {key: 'svg-plus',
+	attrs: {"viewBox":"0 0 64 64","class":"svg-icon"}},
+	[h('path', {attrs: {"d":"M52 29H35V12a3 3 0 1 0-6 0v17H12a3 3 0 1 0 0 6h17v17a3 3 0 1 0 6 0V35h17a3 3 0 1 0 0-6z"}},
+	[])]);
 
 /***/ },
 /* 61 */
@@ -2674,7 +2677,10 @@
 	
 	'use strict';
 	var h = __webpack_require__(6);
-	module.exports = h('svg', {key: 'svg-play',attrs: {"viewBox":"0 0 64 64","class":"svg-icon"}}, [h('path', {attrs: {"d":"M46 32c0-1.099-.592-2.06-1.475-2.583L22.561 16.438l-.024-.014-.011-.007A3 3 0 0 0 18 19v26a3 3 0 0 0 4.526 2.583l.011-.007a.15.15 0 0 1 .024-.014l21.964-12.979A2.997 2.997 0 0 0 46 32z"}}, [])]);
+	module.exports = h('svg', {key: 'svg-play',
+	attrs: {"viewBox":"0 0 64 64","class":"svg-icon"}},
+	[h('path', {attrs: {"d":"M46 32c0-1.099-.592-2.06-1.475-2.583L22.561 16.438l-.024-.014-.011-.007A3 3 0 0 0 18 19v26a3 3 0 0 0 4.526 2.583l.011-.007a.15.15 0 0 1 .024-.014l21.964-12.979A2.997 2.997 0 0 0 46 32z"}},
+	[])]);
 
 /***/ },
 /* 62 */
@@ -2683,7 +2689,10 @@
 	
 	'use strict';
 	var h = __webpack_require__(6);
-	module.exports = h('svg', {key: 'svg-pause',attrs: {"viewBox":"0 0 64 64","class":"svg-icon"}}, [h('path', {attrs: {"d":"M26 19a3 3 0 0 0-3 3v20a3 3 0 1 0 6 0V22a3 3 0 0 0-3-3zm12 0a3 3 0 0 0-3 3v20a3 3 0 1 0 6 0V22a3 3 0 0 0-3-3z"}}, [])]);
+	module.exports = h('svg', {key: 'svg-pause',
+	attrs: {"viewBox":"0 0 64 64","class":"svg-icon"}},
+	[h('path', {attrs: {"d":"M26 19a3 3 0 0 0-3 3v20a3 3 0 1 0 6 0V22a3 3 0 0 0-3-3zm12 0a3 3 0 0 0-3 3v20a3 3 0 1 0 6 0V22a3 3 0 0 0-3-3z"}},
+	[])]);
 
 /***/ },
 /* 63 */
@@ -2692,7 +2701,10 @@
 	
 	'use strict';
 	var h = __webpack_require__(6);
-	module.exports = h('svg', {key: 'svg-minus',attrs: {"viewBox":"0 0 64 64","class":"svg-icon"}}, [h('path', {attrs: {"d":"M52 29H12a3 3 0 1 0 0 6h40a3 3 0 1 0 0-6z"}}, [])]);
+	module.exports = h('svg', {key: 'svg-minus',
+	attrs: {"viewBox":"0 0 64 64","class":"svg-icon"}},
+	[h('path', {attrs: {"d":"M52 29H12a3 3 0 1 0 0 6h40a3 3 0 1 0 0-6z"}},
+	[])]);
 
 /***/ },
 /* 64 */
