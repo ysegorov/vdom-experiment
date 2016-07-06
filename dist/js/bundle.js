@@ -1,7 +1,7 @@
 /*!
  * vdom-experiment
  * Yuri Egorov <ysegorov@gmail.com>
- * 0.1.0:1467292598308
+ * 0.1.0:1467803773845
  */
 /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
@@ -89,12 +89,13 @@
 	    cuid = __webpack_require__(13),
 	    history = __webpack_require__(14).history,
 	    _ = __webpack_require__(15),
-	    Type = __webpack_require__(58),
-	    icons = __webpack_require__(59),
-	    layout = __webpack_require__(68),
-	    globalEvents = __webpack_require__(69),
-	    stream = __webpack_require__(70),
-	    Component = __webpack_require__(71);
+	    Type = __webpack_require__(59),
+	    nav = __webpack_require__(60),
+	    icons = __webpack_require__(61),
+	    layout = __webpack_require__(71),
+	    globalEvents = __webpack_require__(73),
+	    stream = __webpack_require__(74),
+	    Component = __webpack_require__(75);
 	
 	
 	// action/update
@@ -146,14 +147,8 @@
 	        return _.assoc('_paused', state, model);
 	    },
 	    Navigate: function navigate(loc, model) {
-	        var p = (loc.pathname || '/').slice(1);
-	        p = parseInt(p, 10);
-	        if (isNaN(p)) {
-	            p = 20;
-	        }
 	        return _.evolve({
-	            location: function () { return loc; },
-	            blocks: function () { return makeBlocks(p); }
+	            location: function () { return loc; }
 	        }, model);
 	    }
 	});
@@ -164,7 +159,7 @@
 	    return {
 	        cuid: cuid(),
 	        _paused: false,
-	        location: {},
+	        location: {href: '/'},
 	        component: Component.init(1),
 	        blocks: makeBlocks(150)
 	    };
@@ -173,7 +168,7 @@
 	
 	// view
 	
-	var view = _.curryN(2, function view (action, model) {
+	var view = _.curryN(2, function view(action, model) {
 	    return layout.view(action, model);
 	});
 	
@@ -245,13 +240,15 @@
 	function app(Msg, init, elm, loc) {
 	
 	    var action = stream();
+	    var router = _.compose(action, Msg.Navigate, nav);
 	    var model = action.scan(_.flip(Msg.update), init());
 	    // model.map(function (v) { console.log(v); });
 	
 	    var vnode = model.map(view(action));
 	    vnode.scan(patch, elm);
 	
-	    action(Msg.Navigate(loc));
+	    router(loc);
+	    // action(Msg.Navigate(loc));
 	
 	    /*
 	    var tickAction = _.compose(action, Msg.Tick);
@@ -301,15 +298,28 @@
 	    var onFocus = _.compose(onVisibility, _.always(false));
 	    var onBlur = _.compose(onVisibility, _.always(true));
 	
+	    function matched(selector) {
+	        return function(elm) {
+	            // requires dom4
+	            return elm && (elm.matches(selector) ? elm : elm.closest(selector));
+	        };
+	    }
+	    var matchedNavElm = _.compose(matched('.js-nav'), _.prop('target'));
+	    var isNavEvent = _.compose(_.isDefined, matchedNavElm);
+	    var preventDefault = _.tap(function(evt) { evt.preventDefault();});
+	
 	    globalEvents({
-	        resize: onResize,
+	        //resize: onResize,
 	        scroll: onScroll,
-	        popstate: onPopstate,
-	        blur: onBlur,
-	        focus: onFocus
+	        popstate: onPopstate
+	        //blur: onBlur,
+	        //focus: onFocus
 	    },
 	    {
-	        visibilitychange: onVisibilityChange
+	        click: _.ifElse(isNavEvent,
+	                       _.compose(router, matchedNavElm, preventDefault),
+	                       _.noop)
+	        //visibilitychange: onVisibilityChange
 	    });
 	}
 	
@@ -1089,12 +1099,13 @@
 	    curryN = __webpack_require__(41),
 	    evolve = __webpack_require__(43),
 	    flip = __webpack_require__(44),
-	    is = __webpack_require__(45),
-	    keys = __webpack_require__(46),
-	    map = __webpack_require__(49),
-	    path = __webpack_require__(55),
-	    prop = __webpack_require__(56),
-	    tap = __webpack_require__(57);
+	    ifElse = __webpack_require__(45),
+	    is = __webpack_require__(46),
+	    keys = __webpack_require__(47),
+	    map = __webpack_require__(50),
+	    path = __webpack_require__(56),
+	    prop = __webpack_require__(57),
+	    tap = __webpack_require__(58);
 	
 	var slice = [].slice;
 	
@@ -1136,6 +1147,13 @@
 	    };
 	}
 	
+	function noop() {}
+	
+	function trace(prefix) {
+	    return function (smth) {
+	        console.log(prefix, smth);
+	    };
+	}
 	
 	module.exports = {
 	    isArray: Array.isArray,
@@ -1150,12 +1168,15 @@
 	    debounce: debounce,
 	    evolve: evolve,
 	    flip: flip,
+	    ifElse: ifElse,
 	    is: is,
 	    keys: keys,
 	    map: map,
+	    noop: noop,
 	    path: path,
 	    prop: prop,
 	    tap: tap,
+	    trace: trace,
 	    throttle: throttle
 	};
 
@@ -2201,6 +2222,48 @@
 /* 45 */
 /***/ function(module, exports, __webpack_require__) {
 
+	var _curry3 = __webpack_require__(18);
+	var curryN = __webpack_require__(41);
+	
+	
+	/**
+	 * Creates a function that will process either the `onTrue` or the `onFalse`
+	 * function depending upon the result of the `condition` predicate.
+	 *
+	 * @func
+	 * @memberOf R
+	 * @since v0.8.0
+	 * @category Logic
+	 * @sig (*... -> Boolean) -> (*... -> *) -> (*... -> *) -> (*... -> *)
+	 * @param {Function} condition A predicate function
+	 * @param {Function} onTrue A function to invoke when the `condition` evaluates to a truthy value.
+	 * @param {Function} onFalse A function to invoke when the `condition` evaluates to a falsy value.
+	 * @return {Function} A new unary function that will process either the `onTrue` or the `onFalse`
+	 *                    function depending upon the result of the `condition` predicate.
+	 * @see R.unless, R.when
+	 * @example
+	 *
+	 *      var incCount = R.ifElse(
+	 *        R.has('count'),
+	 *        R.over(R.lensProp('count'), R.inc),
+	 *        R.assoc('count', 1)
+	 *      );
+	 *      incCount({});           //=> { count: 1 }
+	 *      incCount({ count: 1 }); //=> { count: 2 }
+	 */
+	module.exports = _curry3(function ifElse(condition, onTrue, onFalse) {
+	  return curryN(Math.max(condition.length, onTrue.length, onFalse.length),
+	    function _ifElse() {
+	      return condition.apply(this, arguments) ? onTrue.apply(this, arguments) : onFalse.apply(this, arguments);
+	    }
+	  );
+	});
+
+
+/***/ },
+/* 46 */
+/***/ function(module, exports, __webpack_require__) {
+
 	var _curry2 = __webpack_require__(21);
 	
 	
@@ -2233,12 +2296,12 @@
 
 
 /***/ },
-/* 46 */
+/* 47 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var _curry1 = __webpack_require__(19);
-	var _has = __webpack_require__(47);
-	var _isArguments = __webpack_require__(48);
+	var _has = __webpack_require__(48);
+	var _isArguments = __webpack_require__(49);
 	
 	
 	/**
@@ -2312,7 +2375,7 @@
 
 
 /***/ },
-/* 47 */
+/* 48 */
 /***/ function(module, exports) {
 
 	module.exports = function _has(prop, obj) {
@@ -2321,10 +2384,10 @@
 
 
 /***/ },
-/* 48 */
+/* 49 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _has = __webpack_require__(47);
+	var _has = __webpack_require__(48);
 	
 	
 	module.exports = (function() {
@@ -2336,16 +2399,16 @@
 
 
 /***/ },
-/* 49 */
+/* 50 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var _curry2 = __webpack_require__(21);
-	var _dispatchable = __webpack_require__(50);
-	var _map = __webpack_require__(52);
+	var _dispatchable = __webpack_require__(51);
+	var _map = __webpack_require__(53);
 	var _reduce = __webpack_require__(29);
-	var _xmap = __webpack_require__(53);
+	var _xmap = __webpack_require__(54);
 	var curryN = __webpack_require__(41);
-	var keys = __webpack_require__(46);
+	var keys = __webpack_require__(47);
 	
 	
 	/**
@@ -2398,11 +2461,11 @@
 
 
 /***/ },
-/* 50 */
+/* 51 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var _isArray = __webpack_require__(33);
-	var _isTransformer = __webpack_require__(51);
+	var _isTransformer = __webpack_require__(52);
 	var _slice = __webpack_require__(36);
 	
 	
@@ -2443,7 +2506,7 @@
 
 
 /***/ },
-/* 51 */
+/* 52 */
 /***/ function(module, exports) {
 
 	module.exports = function _isTransformer(obj) {
@@ -2452,7 +2515,7 @@
 
 
 /***/ },
-/* 52 */
+/* 53 */
 /***/ function(module, exports) {
 
 	module.exports = function _map(fn, functor) {
@@ -2468,11 +2531,11 @@
 
 
 /***/ },
-/* 53 */
+/* 54 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var _curry2 = __webpack_require__(21);
-	var _xfBase = __webpack_require__(54);
+	var _xfBase = __webpack_require__(55);
 	
 	
 	module.exports = (function() {
@@ -2491,7 +2554,7 @@
 
 
 /***/ },
-/* 54 */
+/* 55 */
 /***/ function(module, exports) {
 
 	module.exports = {
@@ -2505,7 +2568,7 @@
 
 
 /***/ },
-/* 55 */
+/* 56 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var _curry2 = __webpack_require__(21);
@@ -2542,7 +2605,7 @@
 
 
 /***/ },
-/* 56 */
+/* 57 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var _curry2 = __webpack_require__(21);
@@ -2569,7 +2632,7 @@
 
 
 /***/ },
-/* 57 */
+/* 58 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var _curry2 = __webpack_require__(21);
@@ -2599,7 +2662,7 @@
 
 
 /***/ },
-/* 58 */
+/* 59 */
 /***/ function(module, exports, __webpack_require__) {
 
 	
@@ -2645,35 +2708,75 @@
 
 
 /***/ },
-/* 59 */
+/* 60 */
 /***/ function(module, exports, __webpack_require__) {
 
 	
 	'use strict';
 	
-	var plus = __webpack_require__(60),
-	    play = __webpack_require__(61),
-	    pause = __webpack_require__(62),
-	    minus = __webpack_require__(63),
-	    home = __webpack_require__(64),
-	    sandbox = __webpack_require__(65),
-	    icons = __webpack_require__(66),
-	    settings = __webpack_require__(67);
+	var _ = __webpack_require__(15),
+	    history = __webpack_require__(14).history;
+	
+	
+	function preventDefault(evt) {
+	    if (evt && typeof evt.preventDefault === 'function') {
+	        evt.preventDefault();
+	    }
+	}
+	function pushState(loc) {
+	    history.pushState(loc, '', loc.href);
+	}
+	function hrefToLocation(evt) {
+	    var link = evt.currentTarget || evt;
+	
+	    return {
+	        protocol: link.protocol,
+	        host: link.host,
+	        port: link.port,
+	        hostname: link.hostname,
+	        pathname: link.pathname,
+	        search: link.search,
+	        hash: link.hash,
+	        href: link.href
+	    };
+	}
+	
+	
+	module.exports = _.compose(_.tap(pushState), hrefToLocation, _.tap(preventDefault));
+
+
+/***/ },
+/* 61 */
+/***/ function(module, exports, __webpack_require__) {
+
+	
+	'use strict';
+	
+	var plus = __webpack_require__(62),
+	    play = __webpack_require__(63),
+	    pause = __webpack_require__(64),
+	    logo = __webpack_require__(65),
+	    minus = __webpack_require__(66),
+	    home = __webpack_require__(67),
+	    sandbox = __webpack_require__(68),
+	    icons = __webpack_require__(69),
+	    settings = __webpack_require__(70);
 	
 	module.exports = {
 	    home: home,
 	    icons: icons,
+	    logo: logo,
+	    minus: minus,
 	    plus: plus,
 	    play: play,
 	    pause: pause,
-	    minus: minus,
 	    sandbox: sandbox,
 	    settings: settings
 	};
 
 
 /***/ },
-/* 60 */
+/* 62 */
 /***/ function(module, exports, __webpack_require__) {
 
 	
@@ -2685,7 +2788,7 @@
 	[])]);
 
 /***/ },
-/* 61 */
+/* 63 */
 /***/ function(module, exports, __webpack_require__) {
 
 	
@@ -2697,7 +2800,7 @@
 	[])]);
 
 /***/ },
-/* 62 */
+/* 64 */
 /***/ function(module, exports, __webpack_require__) {
 
 	
@@ -2709,7 +2812,19 @@
 	[])]);
 
 /***/ },
-/* 63 */
+/* 65 */
+/***/ function(module, exports, __webpack_require__) {
+
+	
+	'use strict';
+	var h = __webpack_require__(6);
+	module.exports = h('svg', {key: 'svg-logo',
+	attrs: {"viewBox":"0 0 62.173818 35.30668","class":"svg-icon"}},
+	[h('path', {attrs: {"d":"M41.36.26c-.147 0-.264.056-.402.135-.097.048-.235.113-.41.193-.184.067-.42.143-.71.229a.237.237 0 0 0-.003 0c-.254.079-.586.138-.99.172a.237.237 0 0 0-.005 0c-.362.034-.67.06-.927.078h.015a.587.587 0 0 0-.455.195c-.11.133-.144.303-.144.482 0 .118.022.235.09.338s.182.177.296.205c.15.038.307.066.473.084.13.015.25.048.363.104a.237.237 0 0 0 .022.012c.02.008.02.007.03.025a.32.32 0 0 1 .024.143c0 .072-.008.207-.025.394a3.473 3.473 0 0 1-.123.58.237.237 0 0 0 0 .004l-2.443 9.334a.237.237 0 0 0-.002.004c-.14.559-.253 1.075-.34 1.549a6.766 6.766 0 0 0-.135 1.266c0 1.111.262 2.007.81 2.65a.237.237 0 0 0 .003.002c.564.64 1.348.963 2.285.963.818 0 1.641-.2 2.465-.594l.002-.002c.845-.396 1.642-.995 2.386-1.793a.237.237 0 0 0 .002-.004 10.33 10.33 0 0 0 1.944-3.111.237.237 0 0 0 0-.002c.46-1.168.691-2.315.691-3.44 0-1.173-.24-2.117-.744-2.812L45.4 7.64c-.484-.705-1.153-1.088-1.936-1.088-.818 0-1.636.462-2.459 1.32a.237.237 0 0 0 0 .002c-.525.56-1.09 1.367-1.673 2.285l2.435-8.293v-.004c.14-.453.219-.733.219-.95 0-.177-.043-.349-.162-.475A.627.627 0 0 0 41.36.26zm11.035 1.717c-.24 0-.476.08-.684.224a.237.237 0 0 0-.008.006c-.176.137-.338.31-.488.516-.153.21-.276.447-.369.709a.237.237 0 0 0-.006.016 2.878 2.878 0 0 0-.111.793c0 .445.082.822.271 1.117a.237.237 0 0 0 .004.006c.196.282.516.44.871.44.485 0 .908-.284 1.213-.76a.237.237 0 0 0 .002-.003c.302-.49.451-1.068.451-1.71 0-.369-.1-.699-.31-.954-.197-.26-.502-.4-.836-.4zm-1.144 4.576c-.47 0-.933.158-1.38.455a.237.237 0 0 0-.003.002c-.422.293-.883.722-1.393 1.285-.438.491-.768.904-.988 1.252a3.89 3.89 0 0 0-.248.444.83.83 0 0 0-.098.359c0 .14.02.27.1.387.08.117.234.187.369.187.254 0 .433-.165.625-.394.177-.213.362-.452.554-.715.184-.251.367-.475.55-.674.186-.187.328-.244.378-.244.052 0 .037 0 .043.01.006.008.031.06.031.17a4.7 4.7 0 0 1-.146.637l-1.637 5.168a.237.237 0 0 0 0 .004 13.764 13.764 0 0 0-.424 1.744 8.361 8.361 0 0 0-.132 1.34c0 .43.084.785.292 1.044.21.26.537.387.907.387.42 0 .867-.148 1.342-.422.479-.276.977-.697 1.507-1.264a.237.237 0 0 0 .004-.004c.44-.491.758-.899.961-1.232v.004c.108-.17.19-.316.248-.443.06-.128.1-.231.1-.36a.54.54 0 0 0-.139-.357.48.48 0 0 0-.357-.19c-.26 0-.41.169-.598.395-.177.212-.363.451-.556.715a7.32 7.32 0 0 1-.575.648c-.184.185-.326.244-.404.244-.043 0-.029-.004-.02.006.01.01-.003.003-.003-.056 0-.076.03-.312.097-.647l.002-.006v-.002c.084-.352.22-.812.408-1.377a.237.237 0 0 0 0-.002l1.56-4.836a.237.237 0 0 0 .003-.002c.14-.456.247-.863.318-1.22.071-.356.108-.643.108-.877 0-.477-.105-.87-.352-1.15-.247-.28-.62-.413-1.055-.413zm7.74.05a3.57 3.57 0 0 0-1.56.362c-.492.237-.93.547-1.313.93-.382.381-.69.812-.926 1.285v-.004c-.24.462-.363.934-.363 1.408 0 .763.33 1.555.957 2.38l1.43 1.898c.254.34.465.66.632.96.152.273.23.594.23.977 0 .411-.099.715-.285.943a.237.237 0 0 0-.006.006c-.175.235-.344.323-.564.323-.248 0-.493-.096-.754-.309-.253-.238-.536-.6-.838-1.086l-.002-.002c-.24-.394-.436-.727-.59-1l-.002-.004c-.181-.34-.483-.564-.832-.564a.698.698 0 0 0-.466.181c-.127.116-.215.271-.282.455-.134.369-.19.868-.19 1.524 0 .628.313 1.176.88 1.572a.237.237 0 0 0 .008.006c.582.376 1.3.557 2.13.557.549 0 1.082-.111 1.592-.328l.006-.002c.524-.2.99-.472 1.391-.819.402-.347.726-.754.965-1.213l.002-.002c.259-.482.39-.998.39-1.539 0-.59-.13-1.127-.394-1.597a13.007 13.007 0 0 0-.9-1.377.237.237 0 0 0 0-.002l-1.223-1.612a.237.237 0 0 0-.002-.002 8.29 8.29 0 0 1-.756-1.13v-.003s-.002 0-.002-.002c-.162-.324-.234-.59-.234-.775 0-.259.075-.433.236-.58a.237.237 0 0 0 .008-.006.805.805 0 0 1 .613-.244c.235 0 .451.085.678.281a.237.237 0 0 0 .006.006c.248.198.478.422.695.672a.237.237 0 0 0 .006.008c.245.262.482.507.71.734a.237.237 0 0 0 .007.006c.255.235.539.373.836.373.33 0 .624-.2.778-.507.153-.308.212-.714.212-1.237 0-.613-.328-1.122-.904-1.43-.56-.316-1.235-.47-2.01-.47zm-42.256.843c-.316 0-.553.026-.742.168a2.453 2.453 0 0 0-.4.396L.796 24.604a.237.237 0 0 0-.002.004 2.438 2.438 0 0 0-.398.621c-.098.229-.139.5-.139.815 0 .32.124.61.365.789.241.178.562.246.951.246h7.76c.175 0 .291.02.352.037-.004.028-.004.024-.014.072-.019.096-.048.23-.088.402l-.838 3.235c-.184.684-.37 1.233-.549 1.642-.158.364-.404.552-.822.622a.237.237 0 0 0-.01.002 8.31 8.31 0 0 1-.972.156h.021c-.274 0-.51.012-.713.04-.213.031-.4.094-.549.206-.188.141-.254.378-.254.63 0 .253.067.485.229.647.162.163.394.229.646.229.18 0 .573-.041 1.268-.121l-.002.002c.704-.079 1.726-.121 3.055-.121 1.168 0 2.054.041 2.648.119.616.08.973.12 1.152.12.305 0 .554-.04.754-.163a.701.701 0 0 0 .323-.592.77.77 0 0 0-.149-.475.814.814 0 0 0-.418-.271h-.002a5.79 5.79 0 0 0-.847-.203A4.311 4.311 0 0 1 12.78 33c-.155-.107-.25-.3-.25-.678 0-.243.036-.502.111-.777a.237.237 0 0 0 .002-.006l.961-3.881a.237.237 0 0 0 .002-.01c.052-.258.106-.435.14-.5a.237.237 0 0 0 .01-.018c-.004.008-.014.003.038-.015a.964.964 0 0 1 .299-.037h1.76c.116 0 .213-.006.303-.026.089-.02.199-.044.27-.185a.237.237 0 0 0 .013-.032l.119-.359a.237.237 0 0 0 .004-.01l.16-.56a.237.237 0 0 0 .008-.065v-.04l-.068.169a.403.403 0 0 0 .109-.29.556.556 0 0 0-.17-.417.627.627 0 0 0-.428-.139h-1.56c-.179 0-.3-.022-.352-.04l.014-.06.09-.367-.002.002 2.191-8.529.008-.03c.052-.134.088-.255.088-.378v-.201a.67.67 0 0 0-.12-.37.54.54 0 0 0-.437-.226h-.199c-.132 0-.225.045-.346.105l.034-.015-2.272.719c-.236.067-.457.213-.664.42a.237.237 0 0 0-.012.013c-.184.215-.31.468-.37.744v-.006l-1.84 7.36a.237.237 0 0 0 0 .006 5.949 5.949 0 0 1-.155.576.237.237 0 0 0-.008.027.665.665 0 0 1-.072.205c-.007.003-.047.026-.131.045H2.532c2.286-2.7 4.38-5.066 6.254-7.04 1.999-2.107 3.691-3.85 5.076-5.235a.237.237 0 0 0 .002-.002 508.719 508.719 0 0 1 3.199-3.239l-.004.002c.39-.377.687-.688.89-.94.205-.254.342-.42.342-.669a.534.534 0 0 0-.304-.455c-.169-.08-.366-.102-.612-.102h-.64zm11.664 1.16c-2.44 0-4.521 1.03-6.184 3.047a.237.237 0 0 0 0 .002c-.57.705-.984 1.362-1.236 1.978a.237.237 0 0 0-.004.01c-.108.297-.189.54-.244.735a1.733 1.733 0 0 0-.088.464c0 .2.029.378.13.526.103.147.289.23.465.23.181 0 .36-.078.489-.207.13-.129.22-.3.295-.508a.237.237 0 0 0 .002-.006c.12-.358.417-.895.89-1.58 1.253-1.827 2.64-2.699 4.203-2.699.919 0 1.647.381 2.252 1.188a.237.237 0 0 0 .002.002c.6.774.91 1.85.91 3.256 0 1.168-.232 2.236-.697 3.216a.237.237 0 0 0-.002.004c-.443.992-1.07 1.989-1.886 2.989a.237.237 0 0 0 0 .002c-.792.976-1.76 1.994-2.9 3.054a.237.237 0 0 0-.003.002 212.888 212.888 0 0 0-3.683 3.604c-1.644 1.643-2.876 2.97-3.706 3.988-.414.51-.728.942-.943 1.303-.214.361-.34.644-.34.918 0 .25.093.487.28.635.186.147.432.2.716.2.165 0 .63-.026 1.457-.08.844-.052 2.147-.08 3.905-.08 2.077 0 3.7.04 4.863.12 1.174.08 1.885.12 2.176.12.346 0 .618-.037.808-.228.191-.19.282-.476.418-.941a.237.237 0 0 0 .002-.002l1.121-4-.002.002c.136-.46.21-.736.21-.947 0-.196-.046-.382-.172-.52a.671.671 0 0 0-.504-.197.643.643 0 0 0-.463.215 1.43 1.43 0 0 0-.28.502.237.237 0 0 0-.004.01 2.089 2.089 0 0 1-.543.863.237.237 0 0 0-.006.008 1.636 1.636 0 0 1-.908.525l-.004.002c-.384.05-.82.076-1.312.076h-7.12c.578-.637 1.166-1.262 1.798-1.828.793-.687 1.6-1.337 2.42-1.945l.001-.002 2.555-1.836.004-.002c.881-.614 1.75-1.24 2.604-1.88a.237.237 0 0 0 .004-.003c1.482-1.158 2.594-2.35 3.334-3.582l.002-.004c.768-1.237 1.154-2.644 1.154-4.2 0-1.887-.567-3.464-1.701-4.683l-.002-.002c-1.112-1.222-2.644-1.834-4.533-1.834zm14.262.265c.22 0 .358.079.5.305a.237.237 0 0 0 .01.016c.152.207.242.509.242.925 0 .622-.152 1.481-.461 2.561a.237.237 0 0 0 0 .002c-.289 1.052-.756 2.152-1.406 3.299a.237.237 0 0 0-.002 0c-.44.779-.9 1.343-1.365 1.697-.475.36-.91.524-1.315.524-.4 0-.65-.113-.828-.338-.178-.226-.287-.6-.287-1.14 0-.508.156-1.197.478-2.046.34-.847.86-1.832 1.565-2.949l.002-.002c.636-.98 1.177-1.706 1.611-2.174.44-.473.852-.68 1.256-.68z"}},
+	[])]);
+
+/***/ },
+/* 66 */
 /***/ function(module, exports, __webpack_require__) {
 
 	
@@ -2721,7 +2836,7 @@
 	[])]);
 
 /***/ },
-/* 64 */
+/* 67 */
 /***/ function(module, exports, __webpack_require__) {
 
 	
@@ -2733,7 +2848,7 @@
 	[])]);
 
 /***/ },
-/* 65 */
+/* 68 */
 /***/ function(module, exports, __webpack_require__) {
 
 	
@@ -2745,7 +2860,7 @@
 	[])]);
 
 /***/ },
-/* 66 */
+/* 69 */
 /***/ function(module, exports, __webpack_require__) {
 
 	
@@ -2757,7 +2872,7 @@
 	[])]);
 
 /***/ },
-/* 67 */
+/* 70 */
 /***/ function(module, exports, __webpack_require__) {
 
 	
@@ -2769,68 +2884,119 @@
 	[])]);
 
 /***/ },
-/* 68 */
+/* 71 */
 /***/ function(module, exports, __webpack_require__) {
 
 	
 	'use strict';
 	
-	var h = __webpack_require__(6);
-	var icons = __webpack_require__(59);
+	var h = __webpack_require__(6),
+	    _ = __webpack_require__(15),
+	    icons = __webpack_require__(61),
+	    urls = __webpack_require__(72);
 	
 	
 	function span(text) { return h('span.text', {}, text); }
 	
-	function navItem(prefix, props, children) {
-	    var itemCl = prefix + '-item';
-	    var linkCl = prefix + '-link';
-	    return h('li.' + itemCl, {}, [h('a.' + linkCl, {props: props}, children || [])]);
+	function navItem(spec, current) {
+	    var itemClass = 'nav-item',
+	        linkClass = 'nav-link',
+	        children = [];
+	
+	    if (spec.icon !== null) {
+	        children.push(spec.icon);
+	    }
+	    if (spec.text) {
+	        children.push(span(spec.text));
+	    }
+	
+	    return h('li.' + itemClass, {class: {selected: urls.isSelected(spec, current)}}, [
+	            h('a.js-nav.' + linkClass,
+	              {props: {href: spec.href, title: spec.title}},
+	              children
+	            )
+	    ]);
 	}
+	
 	
 	function header(action) {
 	    return h('div.main-header', {}, [
 	    ]);
 	}
 	
-	function footer(action) {
+	function footer(urls) {
+	    var children = urls.map(function (spec) { return navItem(spec); });
 	
 	    return h('div.main-footer', {}, [
-	        h('ul.footer-nav', {}, [
-	            navItem('footer-nav', {href: '#about', title: 'About'}, [span('About')]),
-	            navItem('footer-nav', {href: '#credits', title: 'Credits'}, [span('Credits')]),
-	        ]),
+	        h('ul.footer-nav', {}, children),
 	        h('span.footer-copyright', {}, 'Copyright (c) ' + (new Date()).getFullYear())
 	    ]);
 	}
 	
-	function nav(action) {
-	    return h('ul.main-nav', {}, [
-	        h('li.logo'),
-	        navItem('main-nav', {href: '#', title: 'Home'}, [icons.home, span('Home')]),
-	        navItem('main-nav', {href: '#icons', title: 'Icons'}, [icons.icons, span('Icons')]),
-	        navItem('main-nav', {href: '#sandbox', title: 'Sandbox'}, [icons.sandbox, span('Sandbox')]),
-	        navItem('main-nav', {href: '#settings', title: 'Settings'}, [icons.settings, span('Settings')])
-	    ]);
+	function mainNav(urls, currentLocation) {
+	    var children = urls.map(function (spec) {
+	            return navItem(spec, currentLocation);
+	        });
+	    return h('ul.main-nav', {}, children);
 	}
 	
-	function view(action, model) {
+	function view(urls, action, model) {
 	    return h('div.layout', {}, [
-	        header(action),
+	        // header(action),
 	        h('div.main-body', {}, [
 	            h('div.main-left-col', {}, [
-	                nav(action),
-	                footer(action)
+	                h('div.logo', {}, [icons.logo]),
+	                h('div.divider', {}, ' '),
+	                mainNav(urls.main, model.location),
+	                footer(urls.footer)
 	            ]),
 	            h('div.main-content', {}, 'Main content')
 	        ]),
 	    ]);
 	}
 	
-	module.exports = {view: view};
+	module.exports = {view: _.curryN(3, view)(urls)};
 
 
 /***/ },
-/* 69 */
+/* 72 */
+/***/ function(module, exports, __webpack_require__) {
+
+	
+	'use strict';
+	
+	var _ = __webpack_require__(15),
+	    icons = __webpack_require__(61);
+	
+	
+	function url(href, icon, title, text) {
+	    return {
+	        href: href,
+	        icon: icon !== null ? icons[icon] : icon,
+	        title: title,
+	        text: text
+	    };
+	}
+	
+	module.exports = {
+	    'main': [
+	        url('/', 'home', 'Home', 'Home'),
+	        url('/icons', 'icons', 'Icons', 'Icons'),
+	        url('/sandbox', 'sandbox', 'Sandbox', 'Sandbox'),
+	        url('/settings', 'settings', 'Settings', 'Settings')
+	    ],
+	    'footer': [
+	        url('/about', null, 'About', 'About'),
+	        url('/credits', null, 'Credits', 'Credits')
+	    ],
+	    isSelected: function (spec, loc) {
+	        return _.isDefined(loc) && (spec.href === '/' ? loc.pathname === '/' : loc.pathname.startsWith(spec.href));
+	    }
+	};
+
+
+/***/ },
+/* 73 */
 /***/ function(module, exports, __webpack_require__) {
 
 	
@@ -2859,7 +3025,7 @@
 
 
 /***/ },
-/* 70 */
+/* 74 */
 /***/ function(module, exports, __webpack_require__) {
 
 	
@@ -2917,7 +3083,7 @@
 
 
 /***/ },
-/* 71 */
+/* 75 */
 /***/ function(module, exports, __webpack_require__) {
 
 	
@@ -2925,7 +3091,7 @@
 	
 	var h = __webpack_require__(6),
 	    cuid = __webpack_require__(13),
-	    Type = __webpack_require__(58),
+	    Type = __webpack_require__(59),
 	    _ = __webpack_require__(15);
 	
 	
