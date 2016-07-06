@@ -9,6 +9,7 @@ var adjust = require('ramda/src/adjust'),
     curryN = require('ramda/src/curryN'),
     evolve = require('ramda/src/evolve'),
     flip = require('ramda/src/flip'),
+    ifElse = require('ramda/src/ifElse'),
     is = require('ramda/src/is'),
     keys = require('ramda/src/keys'),
     map = require('ramda/src/map'),
@@ -56,6 +57,13 @@ function always(smth) {
     };
 }
 
+function noop() {}
+
+function trace(prefix) {
+    return function (smth) {
+        console.log(prefix, smth);
+    };
+}
 
 module.exports = {
     isArray: Array.isArray,
@@ -70,11 +78,14 @@ module.exports = {
     debounce: debounce,
     evolve: evolve,
     flip: flip,
+    ifElse: ifElse,
     is: is,
     keys: keys,
     map: map,
+    noop: noop,
     path: path,
     prop: prop,
     tap: tap,
+    trace: trace,
     throttle: throttle
 };

@@ -15,6 +15,7 @@ var snabbdom = require('snabbdom'),
     history = require('global').history,
     _ = require('js/_'),
     Type = require('js/type'),
+    nav = require('js/routing'),
     icons = require('js/svg'),
     layout = require('js/layout'),
     globalEvents = require('js/global-events'),
@@ -71,14 +72,8 @@ var Msg = Type({
         return _.assoc('_paused', state, model);
     },
     Navigate: function navigate(loc, model) {
-        var p = (loc.pathname || '/').slice(1);
-        p = parseInt(p, 10);
-        if (isNaN(p)) {
-            p = 20;
-        }
         return _.evolve({
-            location: function () { return loc; },
-            blocks: function () { return makeBlocks(p); }
+            location: function () { return loc; }
         }, model);
     }
 });
@@ -89,7 +84,7 @@ function init() {
     return {
         cuid: cuid(),
         _paused: false,
-        location: {},
+        location: {href: '/'},
         component: Component.init(1),
         blocks: makeBlocks(150)
     };
@@ -98,7 +93,7 @@ function init() {
 
 // view
 
-var view = _.curryN(2, function view (action, model) {
+var view = _.curryN(2, function view(action, model) {
     return layout.view(action, model);
 });
 
@@ -170,13 +165,15 @@ var blocksView = _.curryN(2, function (action, model) {
 function app(Msg, init, elm, loc) {
 
     var action = stream();
+    var router = _.compose(action, Msg.Navigate, nav);
     var model = action.scan(_.flip(Msg.update), init());
     // model.map(function (v) { console.log(v); });
 
     var vnode = model.map(view(action));
     vnode.scan(patch, elm);
 
-    action(Msg.Navigate(loc));
+    router(loc);
+    // action(Msg.Navigate(loc));
 
     /*
     var tickAction = _.compose(action, Msg.Tick);
@@ -226,15 +223,28 @@ function app(Msg, init, elm, loc) {
     var onFocus = _.compose(onVisibility, _.always(false));
     var onBlur = _.compose(onVisibility, _.always(true));
 
+    function matched(selector) {
+        return function(elm) {
+            // requires dom4
+            return elm && (elm.matches(selector) ? elm : elm.closest(selector));
+        };
+    }
+    var matchedNavElm = _.compose(matched('.js-nav'), _.prop('target'));
+    var isNavEvent = _.compose(_.isDefined, matchedNavElm);
+    var preventDefault = _.tap(function(evt) { evt.preventDefault();});
+
     globalEvents({
-        resize: onResize,
+        //resize: onResize,
         scroll: onScroll,
-        popstate: onPopstate,
-        blur: onBlur,
-        focus: onFocus
+        popstate: onPopstate
+        //blur: onBlur,
+        //focus: onFocus
     },
     {
-        visibilitychange: onVisibilityChange
+        click: _.ifElse(isNavEvent,
+                       _.compose(router, matchedNavElm, preventDefault),
+                       _.noop)
+        //visibilitychange: onVisibilityChange
     });
 }
 
