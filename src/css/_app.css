@@ -31,8 +31,21 @@ body,
 }
 
 .logo {
-    height: 1em;
+    height: 3em;
+    text-align: center;
     background-color: $black-alpha-20;
+    margin: $pad;
+}
+.logo .svg-icon {
+    width: 3em;
+    height: 3em;
+    margin: 0;
+    fill: $white-alpha-80;
+}
+.logo + .divider {
+    margin: $pad -$pad;
+    border-top: 1px solid $white-alpha-20;
+    font-size: 0;
 }
 
 .main-left-col {
@@ -44,19 +57,20 @@ body,
     flex: 1;
     margin: 0;
 }
-.main-nav-link {
+.main-nav .nav-link {
     display: block;
     padding: $pad-small $pad;
     text-align: center;
 }
-.main-nav-link:hover {
+.main-nav .nav-item.selected .nav-link,
+.main-nav .nav-link:hover {
     background-color: $black-alpha-20;
 }
-.main-nav-link .svg-icon {
+.main-nav .nav-link .svg-icon {
     width: 2em;
     height: 2em;
 }
-.main-nav-item .text {
+.main-nav .nav-item .text {
     display: block;
 }
 
@@ -78,16 +92,16 @@ body,
     margin: 0;
     list-style: none;
 }
-.footer-nav-item {
+.footer-nav .nav-item {
     display: block;
     text-align: center;
 }
-.footer-nav-link {
+.footer-nav .nav-link {
     display: block;
     padding: $pad-mini $pad-small;
     font-size: .875em;
 }
-.footer-nav-link:hover {
+.footer-nav .nav-link:hover {
     background-color: $black-alpha-20;
 }
 .footer-copyright {
